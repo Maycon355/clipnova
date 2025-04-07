@@ -3,6 +3,7 @@ import axios from "axios";
 import { Readable } from "stream";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 5; // Limita a execução a 5 segundos no máximo
 
 // Serviços para obter URLs diretas do YouTube
 const YT_SERVICES = [
@@ -201,12 +202,21 @@ function getYouTubeEmbedURL(videoId: string) {
   return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
 }
 
+// Função para obter URL direta do Y2mate (extremamente rápido e estável)
+async function getY2mateUrl(videoId: string, quality: string = "720p") {
+  try {
+    const directUrl = `https://www.y2mate.com/youtube/${videoId}`;
+    return directUrl;
+  } catch (error) {
+    throw new Error(`Não foi possível obter URL do Y2mate: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Extrai os parâmetros da URL
     const url = new URL(request.url);
     const videoId = url.searchParams.get("videoId");
-    const format = url.searchParams.get("format") || "video";
     const quality = url.searchParams.get("quality") || "high";
 
     if (!videoId) {
@@ -215,51 +225,22 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`[INFO] Tentando obter stream para vídeo ${videoId} (formato: ${format}, qualidade: ${quality})`);
+    console.log(`[INFO] Redirecionando para ${videoId}`);
 
-    // Sistema de retry para o fetch
-    let directUrl = null;
-    let lastError = null;
-    
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        console.log(`[INFO] Tentativa ${attempt}/2 para obter URL direta`);
-        directUrl = await getDirect(videoId, quality);
-        break;
-      } catch (error) {
-        lastError = error;
-        console.error(`[ERRO] Tentativa ${attempt} falhou:`, error instanceof Error ? error.message : String(error));
-        
-        if (attempt < 2) {
-          const waitTime = 1000; // Tempo mais curto entre tentativas
-          console.log(`[INFO] Aguardando ${waitTime/1000}s antes da próxima tentativa...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-      }
-    }
-    
-    if (!directUrl) {
-      // Se todas as tentativas falharem, redireciona para o embed do YouTube como último recurso
-      console.log(`[INFO] Usando embed do YouTube como último recurso para ${videoId}`);
-      return NextResponse.redirect(getYouTubeEmbedURL(videoId));
-    }
-
+    // Tenta usar o Y2mate rapidamente
     try {
-      // Verifica se a URL é válida antes de redirecionar
-      new URL(directUrl);
-      // Redireciona para a URL do vídeo
+      const directUrl = await getY2mateUrl(videoId);
       return NextResponse.redirect(directUrl);
-    } catch (e) {
-      throw new Error(`URL inválida obtida: ${directUrl}`);
+    } catch (error) {
+      console.error(`[ERRO] Falha ao obter URL do Y2mate:`, error instanceof Error ? error.message : String(error));
     }
+
+    // Fallback imediato para o YouTube embed
+    console.log(`[INFO] Usando embed do YouTube como último recurso para ${videoId}`);
+    return NextResponse.redirect(getYouTubeEmbedURL(videoId));
   } catch (error) {
-    console.error(`[ERRO] Falha ao processar stream:`, error instanceof Error ? error.message : String(error));
-    
-    // Se for um erro de rede ou timeout, fornecer mensagem amigável
-    let errorMessage = error instanceof Error ? error.message : String(error);
-    if (errorMessage.includes("timeout") || errorMessage.includes("network") || errorMessage.includes("ECONNREFUSED")) {
-      errorMessage = "Tempo de resposta excedido. Os servidores externos podem estar sobrecarregados. Por favor, tente novamente mais tarde.";
-    }
+    // Qualquer erro, redireciona para o YouTube
+    console.error(`[ERRO] Redirecionando para YouTube:`, error instanceof Error ? error.message : String(error));
     
     // Extrai o videoId para o fallback
     const url = new URL(request.url);
@@ -271,7 +252,7 @@ export async function GET(request: NextRequest) {
     }
     
     return NextResponse.json({
-      error: `Erro ao processar o stream: ${errorMessage}`,
+      error: `Erro ao processar o vídeo. Por favor, tente novamente mais tarde.`,
     }, { status: 500 });
   }
 }
