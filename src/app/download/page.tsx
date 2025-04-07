@@ -38,6 +38,7 @@ export default function DownloadPage() {
       if (videoId) {
         try {
           setLoading(true);
+          setVideoInfo(null); // Limpa informações anteriores
           console.log(`Obtendo informações para o vídeo ID: ${videoId}`);
           const response = await fetch("/api/video-info", {
             method: "POST",
@@ -54,13 +55,17 @@ export default function DownloadPage() {
           const data = await response.json();
           console.log("Informações do vídeo obtidas:", data);
           setVideoInfo(data);
+          toast.success("Informações do vídeo carregadas com sucesso!");
         } catch (error) {
           console.error("Erro ao obter informações do vídeo:", error);
-          toast.error("Não foi possível obter informações do vídeo. Tente novamente.");
+          toast.error("Não foi possível obter informações do vídeo. O servidor pode estar ocupado ou o vídeo pode ter restrições.");
         } finally {
           setLoading(false);
         }
       }
+    } else if (newUrl && newUrl.length > 5) {
+      // Limpa se a URL foi apagada ou é inválida e tem mais de 5 caracteres
+      setVideoInfo(null);
     }
   };
 
@@ -73,11 +78,13 @@ export default function DownloadPage() {
 
     const videoId = extractVideoId(url);
     if (!videoId) {
-      toast.error("URL do YouTube inválida");
+      toast.error("URL do YouTube inválida. Certifique-se de copiar a URL completa do vídeo.");
       return;
     }
 
     setLoading(true);
+    toast.loading("Processando seu download...", { id: "downloadToast" });
+    
     try {
       console.log(`Iniciando download para o vídeo ID: ${videoId}, formato: ${format}, qualidade: ${quality}`);
       const response = await fetch("/api/download", {
@@ -95,8 +102,9 @@ export default function DownloadPage() {
         // Se houver um fallback disponível, redireciona para ele
         if (errorData.fallback) {
           console.log("Usando fallback:", errorData.fallback);
+          toast.dismiss("downloadToast");
+          toast.success("Redirecionando para método alternativo...");
           window.location.href = errorData.fallback;
-          toast.success("Usando método alternativo para download");
           return;
         }
         
@@ -105,6 +113,7 @@ export default function DownloadPage() {
 
       const data = await response.json();
       console.log("Resposta do download:", data);
+      toast.dismiss("downloadToast");
 
       // Se recebemos uma URL direta para streaming
       if (data.url) {
@@ -126,7 +135,10 @@ export default function DownloadPage() {
       }
     } catch (error) {
       console.error("Erro:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao iniciar o download");
+      toast.dismiss("downloadToast");
+      toast.error(error instanceof Error 
+        ? `Erro: ${error.message}. Por favor, tente novamente mais tarde.` 
+        : "Erro ao iniciar o download. O serviço pode estar indisponível temporariamente.");
     } finally {
       setLoading(false);
     }
@@ -158,8 +170,12 @@ export default function DownloadPage() {
                 onChange={handleUrlChange}
                 className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-all duration-200"
                 placeholder="https://www.youtube.com/watch?v=..."
+                disabled={loading}
               />
             </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Cole a URL completa do vídeo do YouTube que deseja baixar.
+            </p>
           </div>
 
           {videoInfo && (
@@ -261,7 +277,17 @@ export default function DownloadPage() {
               disabled={loading}
               className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-lg font-medium shadow-lg hover:bg-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Processando..." : "Iniciar Download"}
+              {loading ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processando...
+                </span>
+              ) : (
+                "Iniciar Download"
+              )}
             </button>
           </div>
         </form>
