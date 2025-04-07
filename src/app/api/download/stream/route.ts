@@ -39,7 +39,9 @@ export async function GET(request: NextRequest) {
         "sec-fetch-mode:navigate",
         "sec-fetch-site:none",
         "sec-fetch-user:?1",
-        "upgrade-insecure-requests:1"
+        "upgrade-insecure-requests:1",
+        "origin:https://www.youtube.com",
+        "cookie:CONSENT=YES+; VISITOR_INFO1_LIVE=yes"
       ],
       cookies: "cookies.txt",
       noCacheDir: true,
@@ -48,11 +50,33 @@ export async function GET(request: NextRequest) {
       extractorArgs: ["youtube:player_client=all"],
       formatSort: ["res", "ext", "size", "br", "asr", "proto"] as OptionFormatSortPlus[],
       mergeOutputFormat: "mp4",
-      retries: 3,
-      fragmentRetries: 3,
-      fileAccessRetries: 3,
+      retries: 5,
+      fragmentRetries: 5,
+      fileAccessRetries: 5,
       externalDownloader: "aria2c",
-      externalDownloaderArgs: "--min-split-size=1M --max-connection-per-server=16 --max-concurrent-downloads=16 --split=16"
+      externalDownloaderArgs: "--min-split-size=1M --max-connection-per-server=16 --max-concurrent-downloads=16 --split=16 --max-tries=5 --retry-wait=5",
+      socketTimeout: 30,
+      forceIpv4: true,
+      addMetadata: true,
+      writeThumbnail: false,
+      writeDescription: false,
+      writeAnnotations: false,
+      writeSub: false,
+      writeAutoSub: false,
+      subFormat: "srt",
+      subLang: "pt",
+      embedThumbnail: false,
+      embedMetadata: true,
+      embedSubtitle: false,
+      embedChapters: false,
+      extractAudio: format === "audio",
+      audioFormat: format === "audio" ? "mp3" : undefined,
+      audioQuality: format === "audio" ? 0 : undefined,
+      postprocessors: format === "audio" ? [{
+        key: "FFmpegExtractAudio",
+        preferredcodec: "mp3",
+        preferredquality: "192"
+      }] : undefined
     };
 
     // Ajusta qualidade para vídeo
@@ -71,7 +95,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Tenta fazer o download com retry
-    let retries = 3;
+    let retries = 5;
     let lastError;
 
     while (retries > 0) {
@@ -95,7 +119,7 @@ export async function GET(request: NextRequest) {
         retries--;
         if (retries > 0) {
           // Aumenta o tempo de espera entre tentativas
-          await new Promise(resolve => setTimeout(resolve, 2000 * (3 - retries)));
+          await new Promise(resolve => setTimeout(resolve, 5000 * (5 - retries)));
         }
       }
     }
