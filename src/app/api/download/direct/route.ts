@@ -42,7 +42,7 @@ const API_ENDPOINTS = [
   "https://co.wuk.sh/api/json"
 ];
 
-// Função para obter o stream direto de vídeo e transmiti-lo ao cliente
+// Função para obter o stream direto de vídeo ou redirecionar para uma URL de download
 export async function GET(request: NextRequest) {
   try {
     // Extrair parâmetros da URL
@@ -61,75 +61,24 @@ export async function GET(request: NextRequest) {
 
     console.log(`[INFO] Iniciando download direto para o vídeo: ${videoId}`);
 
+    // Tentar obter uma URL direta de download
     try {
-      // Verificar se o vídeo existe
-      const videoExists = await ytdl.validateID(videoId);
-      if (!videoExists) {
-        throw new Error("ID de vídeo inválido");
+      // Usar o serviço Y2mate para gerar uma URL de download direta
+      const y2mateUrl = getY2mateUrl(videoId, title, format === 'audio' ? 'mp3' : 'mp4');
+      console.log(`[INFO] Redirecionando para Y2mate: ${y2mateUrl}`);
+      return NextResponse.redirect(y2mateUrl);
+    } catch (error) {
+      console.error(`[ERRO] Falha ao obter download via Y2mate:`, error instanceof Error ? error.message : String(error));
+      
+      // Tentar outra alternativa - SaveFrom
+      try {
+        const saveFromUrl = getSaveFromUrl(videoId);
+        console.log(`[INFO] Redirecionando para SaveFrom: ${saveFromUrl}`);
+        return NextResponse.redirect(saveFromUrl);
+      } catch (saveFromError) {
+        console.error(`[ERRO] Falha ao obter download via SaveFrom:`, saveFromError instanceof Error ? saveFromError.message : String(saveFromError));
       }
 
-      // Obter informações do vídeo
-      const videoInfo = await ytdl.getInfo(videoId);
-      
-      // Opções para o formato
-      const options: ytdl.downloadOptions = {
-        quality: format === 'audio' ? 'highestaudio' : 'highest',
-        requestOptions: {
-          // Desativar verificação de certificados para ytdl-core
-          agent: false
-        }
-      };
-      
-      // Se for vídeo, definir qualidade específica
-      if (format === 'video') {
-        if (quality === 'high') {
-          options.quality = 'highest';
-        } else if (quality === 'medium') {
-          options.quality = '18'; // 360p
-        } else { // low
-          options.quality = '18'; // 360p
-        }
-      }
-      
-      // Obter o nome do arquivo limpo
-      const sanitizedTitle = title.replace(/[^\w\s.-]/g, '') || `video_${videoId}`;
-      const extension = format === 'audio' ? 'mp3' : 'mp4';
-      const fileName = `${sanitizedTitle}.${extension}`;
-      
-      // Criar um stream para o vídeo
-      const videoStream = ytdl(`https://www.youtube.com/watch?v=${videoId}`, options);
-      
-      // Configurar headers para download
-      const headers = new Headers();
-      headers.set('Content-Type', format === 'audio' ? 'audio/mp3' : 'video/mp4');
-      headers.set('Content-Disposition', `attachment; filename="${fileName}"`);
-      
-      // Criar um stream legível para o Next.js
-      const readable = new ReadableStream({
-        start(controller) {
-          videoStream.on('data', (chunk) => {
-            controller.enqueue(new Uint8Array(chunk));
-          });
-          
-          videoStream.on('end', () => {
-            controller.close();
-          });
-          
-          videoStream.on('error', (err) => {
-            console.error('[ERRO] Erro no stream:', err);
-            controller.error(err);
-          });
-        }
-      });
-      
-      return new NextResponse(readable, {
-        status: 200,
-        headers
-      });
-      
-    } catch (error) {
-      console.error(`[ERRO] Falha ao obter stream direto:`, error instanceof Error ? error.message : String(error));
-      
       // Como último recurso, redirecionar para o YouTube
       const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
       console.log(`[INFO] Redirecionando para embed do YouTube: ${embedUrl}`);
@@ -143,60 +92,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Função auxiliar para fazer streaming do arquivo de mídia
-async function streamMedia(mediaUrl: string, title: string, format: string): Promise<NextResponse> {
-  try {
-    console.log(`[INFO] Iniciando streaming de mídia: ${mediaUrl}`);
-    
-    // Obter o cabeçalho Content-Type e Content-Length fazendo uma solicitação HEAD
-    const headResponse = await axios.head(mediaUrl, {
-      timeout: 5000,
-    });
+// Função para gerar uma URL de download do Y2mate
+function getY2mateUrl(videoId: string, title: string, format: string = 'mp4'): string {
+  // Formato da URL do Y2mate que gera um download direto
+  const encodedTitle = encodeURIComponent(title);
+  return `https://www.y2mate.com/mates/${videoId}/${format}/${encodedTitle}`;
+}
 
-    // Iniciar o download do arquivo
-    const response = await axios.get(mediaUrl, {
-      responseType: 'stream',
-      timeout: 30000,
-    });
-
-    // Configurar o Content-Type e Content-Disposition para download
-    const contentType = headResponse.headers['content-type'] || (format === 'audio' ? 'audio/mp3' : 'video/mp4');
-    const extension = format === 'audio' ? 'mp3' : 'mp4';
-    const fileName = `${title.replace(/[^\w\s.-]/g, '')}.${extension}`;
-
-    // Criar um Response com o stream
-    const headers = new Headers();
-    headers.set('Content-Type', contentType);
-    headers.set('Content-Disposition', `attachment; filename="${fileName}"`);
-    
-    if (headResponse.headers['content-length']) {
-      headers.set('Content-Length', headResponse.headers['content-length']);
-    }
-    
-    // Transformar o stream do axios em um ReadableStream para o NextResponse
-    const readable = new ReadableStream({
-      start(controller) {
-        response.data.on('data', (chunk: Buffer) => {
-          controller.enqueue(new Uint8Array(chunk));
-        });
-        
-        response.data.on('end', () => {
-          controller.close();
-        });
-        
-        response.data.on('error', (err: Error) => {
-          console.error('Erro no stream:', err);
-          controller.error(err);
-        });
-      }
-    });
-
-    return new NextResponse(readable, {
-      status: 200,
-      headers
-    });
-  } catch (error) {
-    console.error(`[ERRO] Falha ao fazer streaming de mídia:`, error instanceof Error ? error.message : String(error));
-    throw error;
-  }
+// Função para gerar uma URL de download do SaveFrom
+function getSaveFromUrl(videoId: string): string {
+  // URL do SaveFrom para download
+  return `https://en.savefrom.net/176/#url=https://youtube.com/watch?v=${videoId}`;
 } 
