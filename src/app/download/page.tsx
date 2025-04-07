@@ -102,47 +102,15 @@ export default function DownloadPage() {
       const videoData = await videoInfoResponse.json();
       setVideoInfo(videoData);
       
-      // Obter URL de download do endpoint da API
-      const downloadResponse = await fetch("/api/download", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          videoId,
-          format,
-          quality,
-        }),
-      });
-
-      if (!downloadResponse.ok) {
-        const errorData = await downloadResponse.json();
-        throw new Error(errorData.error || "Erro ao obter URL de download");
-      }
-
-      const downloadData = await downloadResponse.json();
-      setDownloadUrl(downloadData.url);
+      // Iniciar o download direto usando o novo endpoint
+      toast.success("Iniciando download direto...");
       
-      if (downloadData.isDirectUrl) {
-        // É uma URL direta do vídeo, podemos iniciar o download automaticamente
-        toast.success("URL de download obtida! Iniciando download...");
-        
-        // Criar um link com a URL direta e simular um clique para iniciar o download
-        const downloadLink = document.createElement("a");
-        downloadLink.href = downloadData.url;
-        downloadLink.download = `${videoData.title || `youtube_${videoId}`}.${format === "audio" ? "mp3" : "mp4"}`;
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
-      } else if (downloadData.isRedirect) {
-        // É um redirecionamento para outro endpoint (fallback)
-        toast.success("Usando método alternativo de download...");
-        window.location.href = downloadData.url;
-      } else {
-        // Apenas exibir a URL para o usuário
-        toast.success("URL de download obtida!");
-        setDownloadUrl(downloadData.url);
-      }
+      // Construir a URL para o download direto com todos os parâmetros necessários
+      const downloadUrl = `/api/download/direct?videoId=${videoId}&title=${encodeURIComponent(videoData.title || `video_${videoId}`)}&format=${format}&quality=${quality}`;
+      
+      // Abrir o download em uma nova aba ou usar a aba atual
+      window.location.href = downloadUrl;
+      
     } catch (error) {
       console.error("Erro durante o download:", error);
       setError(error instanceof Error ? error.message : String(error));
