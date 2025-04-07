@@ -1,10 +1,10 @@
-import { kv } from '@vercel/kv';
+import { kv } from "@vercel/kv";
 
 // Interface para armazenar informações sobre downloads
 interface DownloadCache {
   videoId: string;
-  format: 'audio' | 'video';
-  quality?: 'low' | 'medium' | 'high';
+  format: "audio" | "video";
+  quality?: "low" | "medium" | "high";
   url: string;
   expiresAt: number;
   attempts: number;
@@ -14,8 +14,8 @@ interface DownloadCache {
 }
 
 // Chave para o cache
-const getCacheKey = (videoId: string, format: 'audio' | 'video', quality?: string) => {
-  return `download:${videoId}:${format}:${quality || 'default'}`;
+const getCacheKey = (videoId: string, format: "audio" | "video", quality?: string) => {
+  return `download:${videoId}:${format}:${quality || "default"}`;
 };
 
 // Tempo de expiração do cache (24 horas)
@@ -24,20 +24,20 @@ const CACHE_EXPIRY = 24 * 60 * 60;
 // Verifica se o download está em cache
 export const getCachedDownload = async (
   videoId: string,
-  format: 'audio' | 'video',
+  format: "audio" | "video",
   quality?: string
 ): Promise<DownloadCache | null> => {
   try {
     const key = getCacheKey(videoId, format, quality);
     const cached = await kv.get<DownloadCache>(key);
-    
+
     if (cached && cached.expiresAt > Date.now()) {
       return cached;
     }
-    
+
     return null;
   } catch (error) {
-    console.error('Erro ao acessar cache:', error);
+    console.error("Erro ao acessar cache:", error);
     return null;
   }
 };
@@ -45,7 +45,7 @@ export const getCachedDownload = async (
 // Armazena informações sobre o download no cache
 export const cacheDownload = async (
   videoId: string,
-  format: 'audio' | 'video',
+  format: "audio" | "video",
   quality: string | undefined,
   url: string,
   success: boolean,
@@ -53,42 +53,42 @@ export const cacheDownload = async (
 ): Promise<void> => {
   try {
     const key = getCacheKey(videoId, format, quality);
-    
+
     // Verifica se já existe um registro
     const existing = await kv.get<DownloadCache>(key);
-    
+
     const cacheData: DownloadCache = {
       videoId,
       format,
-      quality: quality as 'low' | 'medium' | 'high' | undefined,
+      quality: quality as "low" | "medium" | "high" | undefined,
       url,
       expiresAt: Date.now() + CACHE_EXPIRY * 1000,
       attempts: (existing?.attempts || 0) + 1,
       lastAttempt: Date.now(),
       success,
-      error
+      error,
     };
-    
+
     await kv.set(key, cacheData, { ex: CACHE_EXPIRY });
   } catch (error) {
-    console.error('Erro ao armazenar no cache:', error);
+    console.error("Erro ao armazenar no cache:", error);
   }
 };
 
 // Registra uma tentativa de download
 export const recordDownloadAttempt = async (
   videoId: string,
-  format: 'audio' | 'video',
+  format: "audio" | "video",
   quality: string | undefined,
   success: boolean,
   error?: string
 ): Promise<void> => {
   try {
     const key = getCacheKey(videoId, format, quality);
-    
+
     // Verifica se já existe um registro
     const existing = await kv.get<DownloadCache>(key);
-    
+
     if (existing) {
       // Atualiza o registro existente
       existing.attempts += 1;
@@ -96,25 +96,25 @@ export const recordDownloadAttempt = async (
       existing.success = success;
       existing.error = error;
       existing.expiresAt = Date.now() + CACHE_EXPIRY * 1000;
-      
+
       await kv.set(key, existing, { ex: CACHE_EXPIRY });
     } else {
       // Cria um novo registro
       const cacheData: DownloadCache = {
         videoId,
         format,
-        quality: quality as 'low' | 'medium' | 'high' | undefined,
-        url: '',
+        quality: quality as "low" | "medium" | "high" | undefined,
+        url: "",
         expiresAt: Date.now() + CACHE_EXPIRY * 1000,
         attempts: 1,
         lastAttempt: Date.now(),
         success,
-        error
+        error,
       };
-      
+
       await kv.set(key, cacheData, { ex: CACHE_EXPIRY });
     }
   } catch (error) {
-    console.error('Erro ao registrar tentativa de download:', error);
+    console.error("Erro ao registrar tentativa de download:", error);
   }
-}; 
+};

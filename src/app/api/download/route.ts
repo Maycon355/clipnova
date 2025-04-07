@@ -6,18 +6,12 @@ export async function POST(request: Request) {
     const { url, format, quality } = await request.json();
 
     if (!url) {
-      return NextResponse.json(
-        { error: "URL é obrigatória" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "URL é obrigatória" }, { status: 400 });
     }
 
     // Validar se é uma URL do YouTube
     if (!ytdl.validateURL(url)) {
-      return NextResponse.json(
-        { error: "URL inválida do YouTube" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "URL inválida do YouTube" }, { status: 400 });
     }
 
     // Obter informações do vídeo
@@ -27,7 +21,7 @@ export async function POST(request: Request) {
 
     // Configurar opções de download com base no formato e qualidade
     let options: ytdl.downloadOptions = {};
-    
+
     if (format === "video") {
       switch (quality) {
         case "low":
@@ -117,9 +111,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Erro ao processar download:", error);
-    return NextResponse.json(
-      { error: "Erro ao processar download" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao processar download" }, { status: 500 });
   }
-} 
+}

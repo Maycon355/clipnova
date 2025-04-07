@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownTrayIcon, FilmIcon, CloudArrowUpIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowDownTrayIcon,
+  FilmIcon,
+  CloudArrowUpIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import ytdl from "ytdl-core";
 
@@ -15,7 +20,7 @@ export default function DownloadPage() {
   const handleUrlChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUrl = e.target.value;
     setUrl(newUrl);
-    
+
     if (ytdl.validateURL(newUrl)) {
       try {
         const response = await fetch("/api/video-info", {
@@ -99,8 +104,8 @@ export default function DownloadPage() {
           {videoInfo && (
             <div className="glass-effect rounded-xl shadow-lg p-6">
               <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
-                <img 
-                  src={videoInfo.thumbnail} 
+                <img
+                  src={videoInfo.thumbnail}
                   alt={videoInfo.title}
                   className="w-full sm:w-32 h-auto sm:h-20 object-cover rounded-lg"
                 />
@@ -211,4 +216,4 @@ export default function DownloadPage() {
       </div>
     </div>
   );
-} 
+}

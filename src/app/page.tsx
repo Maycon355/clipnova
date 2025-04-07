@@ -20,8 +20,8 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-lg sm:text-xl leading-8 text-gray-600 max-w-xl mx-auto">
-              ClipNova oferece uma experiência premium gratuita para download de vídeos.
-              Converta para Shorts, gere legendas e muito mais!
+              ClipNova oferece uma experiência premium gratuita para download de vídeos. Converta
+              para Shorts, gere legendas e muito mais!
             </p>
             <div className="flex items-center justify-center gap-x-6">
               <Link
@@ -30,8 +30,8 @@ export default function Home() {
               >
                 Começar Agora
               </Link>
-              <Link 
-                href="/features" 
+              <Link
+                href="/features"
                 className="text-base font-semibold leading-6 text-gray-900 hover:text-indigo-600 transition-colors"
               >
                 Saiba mais <span aria-hidden="true">→</span>

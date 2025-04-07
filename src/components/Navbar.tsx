@@ -16,7 +16,10 @@ export default function Navbar() {
 
   return (
     <header className="absolute inset-x-0 top-0 z-50">
-      <nav className="glass-effect flex items-center justify-between p-6 lg:px-8" aria-label="Global">
+      <nav
+        className="glass-effect flex items-center justify-between p-6 lg:px-8"
+        aria-label="Global"
+      >
         <div className="flex lg:flex-1">
           <Link href="/" className="-m-1.5 p-1.5">
             <span className="text-2xl font-bold text-indigo-600">ClipNova</span>
@@ -33,7 +36,7 @@ export default function Navbar() {
           </button>
         </div>
         <div className="hidden lg:flex lg:gap-x-12">
-          {navigation.map((item) => (
+          {navigation.map(item => (
             <Link
               key={item.name}
               href={item.href}
@@ -71,7 +74,7 @@ export default function Navbar() {
           <div className="mt-6 flow-root">
             <div className="-my-6 divide-y divide-gray-500/10">
               <div className="space-y-2 py-6">
-                {navigation.map((item) => (
+                {navigation.map(item => (
                   <Link
                     key={item.name}
                     href={item.href}
@@ -97,4 +100,4 @@ export default function Navbar() {
       </div>
     </header>
   );
-} 
+}

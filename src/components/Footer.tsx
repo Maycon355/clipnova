@@ -10,11 +10,11 @@ export default function Footer() {
             <span>Desenvolvido por</span>
             <span className="font-semibold text-indigo-600">Maycon Motta</span>
           </div>
-          
+
           <div className="mt-4 flex items-center space-x-4">
-            <Link 
-              href="https://www.instagram.com/xmayconmotta/" 
-              target="_blank" 
+            <Link
+              href="https://www.instagram.com/xmayconmotta/"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-gray-600 hover:text-indigo-500 transition-colors duration-200"
               aria-label="Instagram"
@@ -22,13 +22,13 @@ export default function Footer() {
               <InstagramIcon className="h-6 w-6" />
             </Link>
           </div>
-          
+
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-800 italic font-serif">
               "Procurando um desenvolvedor apaixonado por criar experiências digitais excepcionais?"
             </p>
           </div>
-          
+
           <div className="mt-4 text-xs text-gray-600">
             © {new Date().getFullYear()} ClipNova. Todos os direitos reservados.
           </div>
@@ -36,4 +36,4 @@ export default function Footer() {
       </div>
     </footer>
   );
-} 
+}

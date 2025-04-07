@@ -12,11 +12,7 @@ export const metadata: Metadata = {
   description: "Baixe vídeos do YouTube em alta qualidade, gratuitamente!",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
       <body className={`${inter.className} animated-gradient`}>

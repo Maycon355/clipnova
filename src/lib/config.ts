@@ -2,7 +2,7 @@ export const config = {
   siteName: "ClipNova",
   siteDescription: "Baixe vídeos do YouTube com qualidade e facilidade",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-  
+
   // Limites de uso
   limits: {
     free: {
@@ -37,4 +37,4 @@ export const config = {
       max: 100, // limite de 100 requisições por janela
     },
   },
-}; 
+};

@@ -1,0 +1,20 @@
+# Ignorar node_modules
+node_modules/
+
+# Ignorar arquivos de build
+.next/
+out/
+build/
+
+# Ignorar arquivos de configuração
+.eslintrc.js
+.eslintrc.json
+.prettierrc.js
+next.config.js
+postcss.config.js
+tailwind.config.js
+
+# Ignorar arquivos de ambiente
+.env
+.env.*
+!.env.example 

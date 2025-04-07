@@ -27,7 +27,7 @@ export function formatDuration(seconds: number): string {
 
 export function getVideoQuality(formats: VideoInfo["formats"]): string[] {
   const qualities = new Set<string>();
-  formats.forEach((format) => {
+  formats.forEach(format => {
     if (format.hasVideo) {
       qualities.add(format.quality);
     }
@@ -61,11 +61,13 @@ export function generateFileName(title: string, format: string): string {
     .replace(/[^\w\s-]/g, "")
     .replace(/\s+/g, "-")
     .toLowerCase();
-  
+
   return `${sanitizedTitle}.${format}`;
 }
 
 export function getVideoId(url: string): string | null {
-  const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+  const match = url.match(
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
+  );
   return match ? match[1] : null;
-} 
+}

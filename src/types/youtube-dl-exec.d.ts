@@ -1,5 +1,22 @@
-declare module 'youtube-dl-exec' {
-  export type OptionFormatSortPlus = 'res' | 'ext' | 'size' | 'br' | 'asr' | 'proto' | 'codec' | 'fps' | 'vcodec' | 'acodec' | 'filesize' | 'tbr' | 'vbr' | 'sbr' | 'height' | 'width' | 'format_id';
+declare module "youtube-dl-exec" {
+  export type OptionFormatSortPlus =
+    | "res"
+    | "ext"
+    | "size"
+    | "br"
+    | "asr"
+    | "proto"
+    | "codec"
+    | "fps"
+    | "vcodec"
+    | "acodec"
+    | "filesize"
+    | "tbr"
+    | "vbr"
+    | "sbr"
+    | "height"
+    | "width"
+    | "format_id";
 
   interface YoutubeDlOptions {
     format?: string;
@@ -24,4 +41,4 @@ declare module 'youtube-dl-exec' {
 
   function youtubeDl(url: string, options?: YoutubeDlOptions): Promise<Buffer>;
   export default youtubeDl;
-} 
+}

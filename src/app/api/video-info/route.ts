@@ -6,18 +6,12 @@ export async function POST(request: Request) {
     const { url } = await request.json();
 
     if (!url) {
-      return NextResponse.json(
-        { error: "URL é obrigatória" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "URL é obrigatória" }, { status: 400 });
     }
 
     // Validar se é uma URL do YouTube
     if (!ytdl.validateURL(url)) {
-      return NextResponse.json(
-        { error: "URL inválida do YouTube" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "URL inválida do YouTube" }, { status: 400 });
     }
 
     // Obter informações do vídeo
@@ -39,9 +33,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Erro ao obter informações do vídeo:", error);
-    return NextResponse.json(
-      { error: "Erro ao obter informações do vídeo" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao obter informações do vídeo" }, { status: 500 });
   }
-} 
+}

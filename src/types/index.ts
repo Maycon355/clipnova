@@ -48,4 +48,4 @@ export interface DownloadHistory {
   downloadedAt: string;
   fileSize: number;
   status: "completed" | "failed" | "processing";
-} 
+}
