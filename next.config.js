@@ -6,7 +6,7 @@ const nextConfig = {
     domains: ["i.ytimg.com", "img.youtube.com"],
   },
   experimental: {
-    serverActions: true,
+    serverComponentsExternalPackages: ['sharp'],
   },
   async headers() {
     return [
