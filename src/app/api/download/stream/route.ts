@@ -78,8 +78,6 @@ export async function GET(request: NextRequest) {
         preferredquality: "192"
       }] : undefined,
       // Novas opções para evitar bloqueio
-      proxy: process.env.PROXY_URL,
-      sourceAddress: process.env.SOURCE_IP,
       sleepInterval: 5,
       maxSleepInterval: 30,
       sleepIntervalRequests: 3,
