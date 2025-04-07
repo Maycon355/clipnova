@@ -17,4 +17,12 @@ tailwind.config.js
 # Ignorar arquivos de ambiente
 .env
 .env.*
-!.env.example 
+!.env.example
+
+# Ignorar arquivos CSS
+*.css
+*.scss
+
+# Ignorar arquivos de configuração CSS
+postcss.config.js
+tailwind.config.js 

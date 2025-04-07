@@ -5,15 +5,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@layer base {
-  :root {
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
-    --font-sans: var(--font-geist-sans);
-    --font-mono: var(--font-geist-mono);
-  }
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Geist Sans', Arial, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -26,7 +21,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
 
 @keyframes gradient {
