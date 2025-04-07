@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ClipNova 🎥
 
-## Getting Started
+ClipNova é uma plataforma moderna e performática para download de vídeos do YouTube, oferecendo uma experiência premium gratuita.
 
-First, run the development server:
+## 🚀 Funcionalidades
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Download de vídeos em alta qualidade
+- Conversão automática para Shorts/Reels
+- Geração de legendas com IA
+- Histórico de downloads
+- Integração com Google Drive e Dropbox
+- Sistema de projetos e playlists
+- Interface moderna e responsiva
+
+## 🛠️ Tecnologias
+
+- Frontend: Next.js 14, TypeScript, Tailwind CSS
+- Backend: FastAPI (Python)
+- Banco de Dados: PostgreSQL (Supabase)
+- CDN: Cloudflare
+- Autenticação: NextAuth.js
+- Estado: Zustand
+- Requisições: React Query
+
+## 🏗️ Estrutura do Projeto
+
+```
+clipnova/
+├── src/
+│   ├── app/              # Páginas e rotas
+│   ├── components/       # Componentes React
+│   ├── lib/             # Utilitários e configurações
+│   ├── store/           # Gerenciamento de estado
+│   └── types/           # Definições de tipos
+├── public/              # Arquivos estáticos
+└── package.json         # Dependências
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Como Executar Localmente
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Clone o repositório
+2. Instale as dependências:
+   ```bash
+   npm install
+   ```
+3. Configure as variáveis de ambiente:
+   ```bash
+   cp .env.example .env
+   ```
+4. Execute o projeto:
+   ```bash
+   npm run dev
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🚀 Deploy
 
-## Learn More
+### Frontend (Vercel)
 
-To learn more about Next.js, take a look at the following resources:
+1. Crie uma conta no [Vercel](https://vercel.com)
+2. Conecte com seu GitHub
+3. Importe o projeto
+4. Configure as variáveis de ambiente:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `DATABASE_URL`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Backend (Railway)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Crie uma conta no [Railway](https://railway.app)
+2. Conecte com seu GitHub
+3. Crie um novo projeto
+4. Configure as variáveis de ambiente:
+   - `DATABASE_URL`
+   - `REDIS_URL`
+   - `API_KEY`
 
-## Deploy on Vercel
+### Banco de Dados (Supabase)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Crie uma conta no [Supabase](https://supabase.com)
+2. Crie um novo projeto
+3. Copie as credenciais para o `.env`:
+   - `DATABASE_URL`
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### CDN (Cloudflare)
+
+1. Crie uma conta no [Cloudflare](https://cloudflare.com)
+2. Adicione seu domínio
+3. Configure o DNS para apontar para o Vercel
+4. Ative o proxy (ícone laranja)
+
+## 📝 Licença
+
+MIT
+
+## 🤝 Contribuição
+
+Contribuições são bem-vindas! Por favor, leia as diretrizes de contribuição antes de submeter um PR.

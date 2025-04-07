@@ -1,0 +1,32 @@
+[site]
+bucket = "./public"
+entry-point = "workers-site"
+
+[env.production]
+workers_dev = true
+route = "clipnova.com/*"
+zone_id = "your-zone-id"
+
+[env.staging]
+workers_dev = true
+
+[build]
+command = "npm run build"
+upload.format = "service-worker"
+
+[build.upload]
+dir = "public"
+
+[site]
+bucket = "public"
+entry-point = "workers-site"
+
+[env.production]
+name = "clipnova"
+route = "clipnova.com/*"
+zone_id = "your-zone-id"
+
+[env.staging]
+name = "clipnova-staging"
+route = "staging.clipnova.com/*"
+zone_id = "your-zone-id" 
