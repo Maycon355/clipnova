@@ -3,6 +3,10 @@ import axios from "axios";
 // @ts-ignore - ytdl-core está instalado mas pode não ter tipos
 import ytdl from "ytdl-core";
 import { Readable } from "stream";
+// Para desativar verificações de atualização
+process.env.YTDL_NO_UPDATE = 'true';
+// Para permitir certificados auto-assinados
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +74,10 @@ export async function GET(request: NextRequest) {
       // Opções para o formato
       const options: ytdl.downloadOptions = {
         quality: format === 'audio' ? 'highestaudio' : 'highest',
+        requestOptions: {
+          // Desativar verificação de certificados para ytdl-core
+          agent: false
+        }
       };
       
       // Se for vídeo, definir qualidade específica
