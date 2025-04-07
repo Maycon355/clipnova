@@ -3,7 +3,7 @@ import ytdl from "ytdl-core";
 
 export async function POST(request: Request) {
   try {
-    const { url, format } = await request.json();
+    const { url, format, quality } = await request.json();
 
     if (!url) {
       return NextResponse.json(
@@ -25,28 +25,87 @@ export async function POST(request: Request) {
     const videoTitle = info.videoDetails.title;
     const videoId = info.videoDetails.videoId;
 
-    // Configurar opções de download com base no formato
+    // Configurar opções de download com base no formato e qualidade
     let options: ytdl.downloadOptions = {};
     
     if (format === "video") {
-      options = {
-        quality: "highest",
-        filter: "videoandaudio",
-      };
+      switch (quality) {
+        case "low":
+          options = {
+            quality: "18", // 360p
+            filter: "videoandaudio",
+          };
+          break;
+        case "medium":
+          options = {
+            quality: "22", // 720p
+            filter: "videoandaudio",
+          };
+          break;
+        case "high":
+        default:
+          options = {
+            quality: "highest",
+            filter: "videoandaudio",
+          };
+          break;
+      }
     } else if (format === "shorts") {
-      options = {
-        quality: "highest",
-        filter: "videoandaudio",
-        range: {
-          start: 0,
-          end: 60 * 1000, // Limitar a 60 segundos para shorts
-        },
-      };
+      switch (quality) {
+        case "low":
+          options = {
+            quality: "18",
+            filter: "videoandaudio",
+            range: {
+              start: 0,
+              end: 60 * 1000,
+            },
+          };
+          break;
+        case "medium":
+          options = {
+            quality: "22",
+            filter: "videoandaudio",
+            range: {
+              start: 0,
+              end: 60 * 1000,
+            },
+          };
+          break;
+        case "high":
+        default:
+          options = {
+            quality: "highest",
+            filter: "videoandaudio",
+            range: {
+              start: 0,
+              end: 60 * 1000,
+            },
+          };
+          break;
+      }
     } else if (format === "audio") {
-      options = {
-        quality: "highestaudio",
-        filter: "audioonly",
-      };
+      switch (quality) {
+        case "low":
+          options = {
+            quality: "lowestaudio",
+            filter: "audioonly",
+          };
+          break;
+        case "medium":
+          options = {
+            quality: "highestaudio",
+            filter: "audioonly",
+          };
+          break;
+        case "high":
+        default:
+          options = {
+            quality: "highestaudio",
+            filter: "audioonly",
+          };
+          break;
+      }
     }
 
     // Retornar URL de download
@@ -54,7 +113,7 @@ export async function POST(request: Request) {
       success: true,
       title: videoTitle,
       videoId,
-      downloadUrl: `/api/download/stream?videoId=${videoId}&format=${format}`,
+      downloadUrl: `/api/download/stream?videoId=${videoId}&format=${format}&quality=${quality}`,
     });
   } catch (error) {
     console.error("Erro ao processar download:", error);
