@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     // Configurações avançadas para evitar bloqueio
     const options = {
-      format: format === "audio" ? "bestaudio" : "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+      format: format === "audio" ? "bestaudio" : "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
       output: "-",
       noCheckCertificates: true,
       noWarnings: true,
