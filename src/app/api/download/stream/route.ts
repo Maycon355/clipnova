@@ -92,12 +92,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Criar stream com retry
-    let stream: ReturnType<typeof ytdl.downloadFromInfo>;
+    let stream: ReturnType<typeof ytdl.downloadFromInfo> | undefined = undefined;
     retryCount = 0;
 
     while (retryCount < maxRetries) {
       try {
-        stream = ytdl.downloadFromInfo(info, {
+        const tempStream = ytdl.downloadFromInfo(info, {
           ...requestOptions,
           format: selectedFormat
         });
@@ -105,21 +105,22 @@ export async function GET(request: NextRequest) {
         // Verificar se o stream é válido
         await new Promise((resolve, reject) => {
           const timeout = setTimeout(() => {
-            stream?.destroy();
+            tempStream?.destroy();
             reject(new Error('Timeout ao iniciar stream'));
           }, 5000);
 
-          stream.once('response', () => {
+          tempStream.once('response', () => {
             clearTimeout(timeout);
             resolve(true);
           });
 
-          stream.once('error', (error: Error) => {
+          tempStream.once('error', (error: Error) => {
             clearTimeout(timeout);
             reject(error);
           });
         });
 
+        stream = tempStream;
         break;
       } catch (error) {
         console.error(`Tentativa de stream ${retryCount + 1} falhou:`, error);
