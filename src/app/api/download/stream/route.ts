@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import youtubeDl from "youtube-dl-exec";
 import type { OptionFormatSortPlus } from "youtube-dl-exec";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const videoId = searchParams.get("videoId");
     const format = searchParams.get("format");
     const quality = searchParams.get("quality");
