@@ -12,6 +12,26 @@ const YT_SERVICES = [
   "https://co.wuk.sh/api/json"                       // Alternativa 3
 ];
 
+// Função para verificar se uma resposta é JSON válido
+function isValidJSON(response: any) {
+  if (!response || !response.data) return false;
+  
+  // Se já é um objeto, então é JSON válido
+  if (typeof response.data === 'object') return true;
+  
+  // Se é string, tenta parse
+  if (typeof response.data === 'string') {
+    try {
+      JSON.parse(response.data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  return false;
+}
+
 // Função para obter a URL direta usando vários serviços
 async function getDirect(videoId: string, quality: string = "high") {
   let lastError: Error | null = null;
@@ -31,6 +51,10 @@ async function getDirect(videoId: string, quality: string = "high") {
         'Accept': 'application/json'
       }
     });
+    
+    if (!isValidJSON(response)) {
+      throw new Error("Resposta inválida recebida");
+    }
     
     if (response.data?.url) {
       return response.data.url;
@@ -52,6 +76,10 @@ async function getDirect(videoId: string, quality: string = "high") {
         'Accept': 'application/json'
       }
     });
+    
+    if (!isValidJSON(response)) {
+      throw new Error("Resposta inválida recebida");
+    }
     
     if (response.data?.url) {
       return response.data.url;
@@ -81,6 +109,10 @@ async function getDirect(videoId: string, quality: string = "high") {
       }
     });
     
+    if (!isValidJSON(response)) {
+      throw new Error("Resposta inválida recebida");
+    }
+    
     if (response.data?.url) {
       return response.data.url;
     } else {
@@ -108,8 +140,15 @@ async function getDirect(videoId: string, quality: string = "high") {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Content-Type': 'application/json',
         'Accept': 'application/json'
+      },
+      validateStatus: function (status) {
+        return status < 500; // Aceita status 2xx, 3xx e 4xx
       }
     });
+    
+    if (!isValidJSON(response)) {
+      throw new Error("Resposta inválida recebida");
+    }
     
     if (response.data?.url) {
       return response.data.url;
@@ -166,12 +205,25 @@ export async function GET(request: NextRequest) {
       throw lastError || new Error("Todas as tentativas falharam");
     }
 
-    // Redireciona para a URL do vídeo
-    return NextResponse.redirect(directUrl);
+    try {
+      // Verifica se a URL é válida antes de redirecionar
+      new URL(directUrl);
+      // Redireciona para a URL do vídeo
+      return NextResponse.redirect(directUrl);
+    } catch (e) {
+      throw new Error(`URL inválida obtida: ${directUrl}`);
+    }
   } catch (error) {
     console.error(`[ERRO] Falha ao processar stream:`, error instanceof Error ? error.message : String(error));
+    
+    // Se for um erro de rede ou timeout, fornecer mensagem amigável
+    let errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes("timeout") || errorMessage.includes("network") || errorMessage.includes("ECONNREFUSED")) {
+      errorMessage = "Tempo de resposta excedido. Os servidores externos podem estar sobrecarregados. Por favor, tente novamente mais tarde.";
+    }
+    
     return NextResponse.json({
-      error: `Erro ao processar o stream: ${error instanceof Error ? error.message : String(error)}`,
+      error: `Erro ao processar o stream: ${errorMessage}`,
     }, { status: 500 });
   }
 }

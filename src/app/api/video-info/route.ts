@@ -13,6 +13,26 @@ const VIDEO_INFO_SERVICES = [
 // URL direta para thumbnails
 const YT_THUMBNAIL = "https://i.ytimg.com/vi/";
 
+// Função para verificar se uma resposta é JSON válido
+function isValidJSON(response: any) {
+  if (!response || !response.data) return false;
+  
+  // Se já é um objeto, então é JSON válido
+  if (typeof response.data === 'object') return true;
+  
+  // Se é string, tenta parse
+  if (typeof response.data === 'string') {
+    try {
+      JSON.parse(response.data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  return false;
+}
+
 // Função para obter informações do vídeo
 async function getVideoInfo(videoId: string) {
   let lastError: Error | null = null;
@@ -25,8 +45,15 @@ async function getVideoInfo(videoId: string) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'application/json'
+      },
+      validateStatus: function (status) {
+        return status < 500; // Aceita status 2xx, 3xx e 4xx
       }
     });
+    
+    if (!isValidJSON(response)) {
+      throw new Error("Resposta inválida recebida");
+    }
     
     if (response.data) {
       return {
@@ -48,8 +75,15 @@ async function getVideoInfo(videoId: string) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'application/json'
+      },
+      validateStatus: function (status) {
+        return status < 500; // Aceita status 2xx, 3xx e 4xx
       }
     });
+    
+    if (!isValidJSON(response)) {
+      throw new Error("Resposta inválida recebida");
+    }
     
     if (response.data) {
       return {
@@ -71,8 +105,15 @@ async function getVideoInfo(videoId: string) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'application/json'
+      },
+      validateStatus: function (status) {
+        return status < 500; // Aceita status 2xx, 3xx e 4xx
       }
     });
+    
+    if (!isValidJSON(response)) {
+      throw new Error("Resposta inválida recebida");
+    }
     
     if (response.data) {
       return {
@@ -234,8 +275,15 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("Erro ao obter informações do vídeo:", error);
+    
+    // Se for um erro de rede ou timeout, fornecer mensagem amigável
+    let errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes("timeout") || errorMessage.includes("network") || errorMessage.includes("ECONNREFUSED")) {
+      errorMessage = "Tempo de resposta excedido. Os servidores externos podem estar sobrecarregados. Por favor, tente novamente mais tarde.";
+    }
+    
     return NextResponse.json(
-      { error: `Erro ao obter informações do vídeo: ${error instanceof Error ? error.message : String(error)}` },
+      { error: `Erro ao obter informações do vídeo: ${errorMessage}` },
       { status: 500 }
     );
   }
