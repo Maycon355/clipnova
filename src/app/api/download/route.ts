@@ -21,6 +21,45 @@ function getFallbackPlayerUrl(videoId: string) {
   return `/api/download/stream?videoId=${videoId}`;
 }
 
+// Função GET para suportar redirecionamento via URL
+export async function GET(request: NextRequest) {
+  try {
+    // Extrair parâmetros da URL
+    const url = new URL(request.url);
+    const videoId = url.searchParams.get("videoId");
+    const format = url.searchParams.get("format") || "video";
+    const quality = url.searchParams.get("quality") || "high";
+
+    if (!videoId) {
+      return NextResponse.json(
+        { error: "ID do vídeo não fornecido" },
+        { status: 400 }
+      );
+    }
+
+    console.log(`[INFO] Processando download via GET para o vídeo: ${videoId}`);
+
+    // Redirecionamento direto para o Y2mate
+    return NextResponse.redirect(getY2mateUrl(videoId));
+    
+  } catch (error) {
+    console.error(`[ERRO] Falha ao processar download:`, error instanceof Error ? error.message : String(error));
+    
+    // Em caso de erro, tenta extrair o videoId e direciona para o fallback
+    const url = new URL(request.url);
+    const videoId = url.searchParams.get("videoId");
+    
+    if (videoId) {
+      // Redireciona para o fallback
+      return NextResponse.redirect(getFallbackPlayerUrl(videoId));
+    }
+    
+    return NextResponse.json({
+      error: "Não foi possível processar o vídeo. Por favor, tente novamente mais tarde."
+    }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
@@ -35,14 +74,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`[INFO] Processando download para o vídeo: ${videoId}`);
 
-    // Responde rapidamente com o Y2mate, que funciona bem para a maioria dos vídeos
-    return NextResponse.json({ 
-      url: getY2mateUrl(videoId),
-      format: format || "video",
-      quality: quality || "high",
-      videoId,
-      alternativeUrl: getSaveFromUrl(videoId)
-    });
+    // Redirecionamento direto para o Y2mate, que funciona bem para a maioria dos vídeos
+    return NextResponse.redirect(getY2mateUrl(videoId));
+    
   } catch (error) {
     console.error(`[ERRO] Falha ao processar download:`, error instanceof Error ? error.message : String(error));
     
@@ -64,14 +98,10 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
       
-      // Fornecer um fallback rápido
+      // Redirecionamento direto para o fallback
       const fallbackUrl = getFallbackPlayerUrl(videoId);
+      return NextResponse.redirect(fallbackUrl);
       
-      return NextResponse.json({
-        url: fallbackUrl,
-        alternativeUrl: getSaveFromUrl(videoId),
-        isRedirect: true
-      }, { status: 200 });
     } catch (fallbackError) {
       // Se até mesmo o fallback falhar, retornamos apenas a mensagem de erro
       return NextResponse.json({

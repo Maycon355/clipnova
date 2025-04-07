@@ -76,7 +76,6 @@ export default function DownloadPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    setVideoInfo(null);
 
     try {
       const videoId = extractVideoId(url);
@@ -103,52 +102,15 @@ export default function DownloadPage() {
       const videoData = await videoInfoResponse.json();
       setVideoInfo(videoData);
 
-      // Em seguida, obtem URL de download
-      const downloadResponse = await fetch("/api/download", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          videoId,
-          format: format,
-          quality: quality,
-        }),
-      });
-
-      if (!downloadResponse.ok) {
-        const errorData = await downloadResponse.json();
-        throw new Error(errorData.error || "Erro ao obter URL de download");
-      }
-
-      const downloadData = await downloadResponse.json();
+      // Redirecionar diretamente para a API de download com os parâmetros
+      window.location.href = `/api/download?videoId=${videoId}&format=${format}&quality=${quality}`;
       
-      // Verifica se é um redirecionamento para fallback
-      if (downloadData.isRedirect) {
-        if (downloadData.error) {
-          setFallbackMessage(downloadData.error);
-        }
-        
-        // Redirecionar para o fallback
-        window.location.href = downloadData.url;
-        return;
-      }
+      // Importante: como estamos redirecionando a página, o código abaixo não será executado
+      // Ele está aqui apenas para manter a lógica caso o redirecionamento não ocorra
 
-      // Se não for redirecionamento, continua normalmente
-      const downloadUrl = downloadData.url;
-      setDownloadUrl(downloadUrl);
-
-      // Inicia o download automaticamente
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = `youtube_${videoId}_${format}.${format === "audio" ? "mp3" : "mp4"}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
     } catch (error) {
       console.error("Erro durante o download:", error);
       setError(error instanceof Error ? error.message : String(error));
-    } finally {
       setLoading(false);
     }
   };
