@@ -6,12 +6,10 @@
   "framework": "nextjs",
   "regions": ["gru1"],
   "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key",
-    "DATABASE_URL": "@database_url",
-    "NEXTAUTH_URL": "@nextauth_url",
-    "NEXTAUTH_SECRET": "@nextauth_secret",
-    "YOUTUBE_API_KEY": "@youtube_api_key"
+    "NEXT_PUBLIC_SUPABASE_URL": "https://qjvxwqjvxwqjvxwqjvxw.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqdnh3cWp2eHdxanZ4d3FqdnhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk5MjE2NzAsImV4cCI6MjAyNTQ5NzY3MH0.2QYQZQYQZQYQZQYQZQYQZQYQZQYQZQYQZQYQZQYQZQ",
+    "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqdnh3cWp2eHdxanZ4d3FqdnhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcwOTkyMTY3MCwiZXhwIjoyMDI1NDk3NjcwfQ.2QYQZQYQZQYQZQYQZQYQZQYQZQYQZQYQZQYQZQYQZQ",
+    "DATABASE_URL": "postgresql://postgres:postgres@db.qjvxwqjvxwqjvxwqjvxw.supabase.co:5432/postgres"
   },
   "headers": [
     {
