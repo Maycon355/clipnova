@@ -50,9 +50,9 @@ export async function GET(request: NextRequest) {
       extractorArgs: ["youtube:player_client=all"],
       formatSort: ["res", "ext", "size", "br", "asr", "proto"] as OptionFormatSortPlus[],
       mergeOutputFormat: "mp4",
-      retries: 5,
-      fragmentRetries: 5,
-      fileAccessRetries: 5,
+      retries: 10,
+      fragmentRetries: 10,
+      fileAccessRetries: 10,
       externalDownloader: "aria2c",
       externalDownloaderArgs: "--min-split-size=1M --max-connection-per-server=16 --max-concurrent-downloads=16 --split=16 --max-tries=5 --retry-wait=5",
       socketTimeout: 30,
@@ -76,7 +76,22 @@ export async function GET(request: NextRequest) {
         key: "FFmpegExtractAudio",
         preferredcodec: "mp3",
         preferredquality: "192"
-      }] : undefined
+      }] : undefined,
+      // Novas opções para evitar bloqueio
+      proxy: process.env.PROXY_URL,
+      sourceAddress: process.env.SOURCE_IP,
+      sleepInterval: 5,
+      maxSleepInterval: 30,
+      sleepIntervalRequests: 3,
+      maxDownloads: 1,
+      rateLimit: 100000,
+      throttledRate: 100000,
+      bufferSize: 1024,
+      httpChunkSize: 10485760,
+      ignoreErrors: true,
+      noColor: true,
+      noProgress: true,
+      noCallHome: true
     };
 
     // Ajusta qualidade para vídeo
