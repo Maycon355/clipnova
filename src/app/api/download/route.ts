@@ -3,14 +3,22 @@ import axios from "axios";
 
 export const dynamic = "force-dynamic";
 
-// Endpoints alternativos para obter URLs diretas do YouTube
+// Endpoints alternativos com instâncias mais confiáveis
 const API_ENDPOINTS = [
-  "https://pipedapi.kavin.rocks",         // API Piped
-  "https://pipedapi.tokhmi.xyz",          // Outra instância Piped
-  "https://pipedapi.moomoo.me",           // Outra instância Piped
-  "https://invidious.snopyta.org/api/v1", // API Invidious
-  "https://ytapi.smashub.tech"            // API personalizada de fallback
+  // Instâncias Piped
+  "https://pipedapi.syncpundit.io",      // Geralmente estável
+  "https://api-piped.mha.fi",            // Muito confiável
+  "https://piped-api.garudalinux.org",   // Bom uptime
+  "https://piped-api.privacy.com.de",    // Confiável
+  
+  // Instâncias Invidious 
+  "https://vid.puffyan.us/api/v1",       // Muito estável
+  "https://invidious.slipfox.xyz/api/v1", // Bom uptime
+  "https://invidious.private.coffee/api/v1"  // Instância confiável
 ];
+
+// Endpoint para YT Direct link extractor (alternativa)
+const YT_DIRECT_EXTRACTOR = "https://t2.vanity.pw/video";
 
 // Função para tentar múltiplos endpoints
 async function fetchWithFallback(videoId: string, format: string, quality: string) {
@@ -21,7 +29,12 @@ async function fetchWithFallback(videoId: string, format: string, quality: strin
     try {
       if (endpoint.includes("piped")) {
         console.log(`[INFO] Tentando Piped API: ${endpoint}`);
-        const response = await axios.get(`${endpoint}/streams/${videoId}`);
+        const response = await axios.get(`${endpoint}/streams/${videoId}`, {
+          timeout: 5000, // 5 segundos de timeout
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+          }
+        });
         
         // Seleciona stream baseada no formato e qualidade
         let streamUrl = "";
@@ -61,15 +74,23 @@ async function fetchWithFallback(videoId: string, format: string, quality: strin
         }
       } else if (endpoint.includes("invidious")) {
         console.log(`[INFO] Tentando Invidious API: ${endpoint}`);
-        const response = await axios.get(`${endpoint}/videos/${videoId}`);
+        const response = await axios.get(`${endpoint}/videos/${videoId}`, {
+          timeout: 5000, // 5 segundos de timeout
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+          }
+        });
         const data = response.data;
         
         // Seleciona formato baseado nas preferências
         let streamUrl = "";
         if (format === "audio") {
           // Ordenar os formatos de áudio por bitrate (qualidade)
-          const audioFormats = data.adaptiveFormats.filter((f: any) => f.type.startsWith('audio/')).sort((a: any, b: any) => b.bitrate - a.bitrate);
-          streamUrl = audioFormats.length > 0 ? audioFormats[0].url : "";
+          const audioFormats = data.adaptiveFormats?.filter((f: any) => f.type?.startsWith('audio/'));
+          if (audioFormats && audioFormats.length > 0) {
+            const sortedAudio = [...audioFormats].sort((a: any, b: any) => b.bitrate - a.bitrate);
+            streamUrl = sortedAudio[0].url;
+          }
         } else {
           // Definir resolução alvo baseada na qualidade
           let targetHeight = 360; // padrão médio
@@ -83,31 +104,22 @@ async function fetchWithFallback(videoId: string, format: string, quality: strin
           }
           
           // Filtrar formatos de vídeo e encontrar o mais próximo da resolução desejada
-          const videoFormats = data.adaptiveFormats.filter((f: any) => f.type.startsWith('video/'));
-          const sortedFormats = [...videoFormats].sort((a: any, b: any) => {
-            const heightA = a.height || 0;
-            const heightB = b.height || 0;
-            return Math.abs(heightA - targetHeight) - Math.abs(heightB - targetHeight);
-          });
-          
-          streamUrl = sortedFormats.length > 0 ? sortedFormats[0].url : "";
+          const videoFormats = data.adaptiveFormats?.filter((f: any) => f.type?.startsWith('video/'));
+          if (videoFormats && videoFormats.length > 0) {
+            const sortedFormats = [...videoFormats].sort((a: any, b: any) => {
+              const heightA = a.height || 0;
+              const heightB = b.height || 0;
+              return Math.abs(heightA - targetHeight) - Math.abs(heightB - targetHeight);
+            });
+            
+            streamUrl = sortedFormats[0].url;
+          }
         }
         
         if (streamUrl) {
           return { success: true, url: streamUrl, source: "invidious" };
         } else {
           throw new Error("Nenhum stream disponível no formato solicitado");
-        }
-      } else {
-        // Endpoint personalizado para API genérica
-        console.log(`[INFO] Tentando API alternativa: ${endpoint}`);
-        const response = await axios.get(`${endpoint}/video/url?id=${videoId}&format=${format}&quality=${quality}`);
-        const data = response.data;
-        
-        if (data.url) {
-          return { success: true, url: data.url, source: "custom" };
-        } else {
-          throw new Error("API não retornou URL válida");
         }
       }
     } catch (error) {
@@ -116,6 +128,28 @@ async function fetchWithFallback(videoId: string, format: string, quality: strin
       // Continua tentando o próximo endpoint
       continue;
     }
+  }
+  
+  // Último recurso - extrator direto
+  try {
+    console.log(`[INFO] Tentando extrator direto: ${YT_DIRECT_EXTRACTOR}`);
+    const response = await axios.get(`${YT_DIRECT_EXTRACTOR}/${videoId}`, {
+      timeout: 8000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Referer': 'https://www.youtube.com/'
+      }
+    });
+    
+    if (response.data && response.data.url) {
+      return { success: true, url: response.data.url, source: "direct-extractor" };
+    } else {
+      throw new Error("Extrator direto não retornou URLs válidas");
+    }
+  } catch (error) {
+    console.error(`[ERRO] Extrator direto falhou:`, error instanceof Error ? error.message : String(error));
+    lastError = error instanceof Error ? error : new Error(String(error));
   }
   
   // Se chegamos aqui, todos os endpoints falharam
