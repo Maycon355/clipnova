@@ -8,7 +8,6 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
-import ytdl from "ytdl-core";
 
 export default function DownloadPage() {
   const [url, setUrl] = useState("");
@@ -17,23 +16,50 @@ export default function DownloadPage() {
   const [quality, setQuality] = useState("high");
   const [videoInfo, setVideoInfo] = useState<any>(null);
 
+  // Extrair videoId da URL do YouTube
+  const extractVideoId = (url: string): string | null => {
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7].length === 11) ? match[7] : null;
+  };
+
+  // Verificar se é uma URL válida do YouTube
+  const isValidYoutubeUrl = (url: string): boolean => {
+    const regExp = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+    return regExp.test(url);
+  };
+
   const handleUrlChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUrl = e.target.value;
     setUrl(newUrl);
 
-    if (ytdl.validateURL(newUrl)) {
-      try {
-        const response = await fetch("/api/video-info", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: newUrl }),
-        });
-        const data = await response.json();
-        if (response.ok) {
+    if (isValidYoutubeUrl(newUrl)) {
+      const videoId = extractVideoId(newUrl);
+      if (videoId) {
+        try {
+          setLoading(true);
+          console.log(`Obtendo informações para o vídeo ID: ${videoId}`);
+          const response = await fetch("/api/video-info", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ videoId }),
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Erro da API:", errorData);
+            throw new Error(errorData.error || "Erro ao obter informações do vídeo");
+          }
+          
+          const data = await response.json();
+          console.log("Informações do vídeo obtidas:", data);
           setVideoInfo(data);
+        } catch (error) {
+          console.error("Erro ao obter informações do vídeo:", error);
+          toast.error("Não foi possível obter informações do vídeo. Tente novamente.");
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Erro ao obter informações do vídeo:", error);
       }
     }
   };
@@ -45,24 +71,59 @@ export default function DownloadPage() {
       return;
     }
 
+    const videoId = extractVideoId(url);
+    if (!videoId) {
+      toast.error("URL do YouTube inválida");
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log(`Iniciando download para o vídeo ID: ${videoId}, formato: ${format}, qualidade: ${quality}`);
       const response = await fetch("/api/download", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url, format, quality }),
+        body: JSON.stringify({ videoId, format, quality }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || "Erro ao processar download");
+        const errorData = await response.json();
+        console.error("Erro da API:", errorData);
+        
+        // Se houver um fallback disponível, redireciona para ele
+        if (errorData.fallback) {
+          console.log("Usando fallback:", errorData.fallback);
+          window.location.href = errorData.fallback;
+          toast.success("Usando método alternativo para download");
+          return;
+        }
+        
+        throw new Error(errorData.error || "Erro ao processar download");
       }
 
-      window.location.href = data.downloadUrl;
-      toast.success("Download iniciado com sucesso!");
+      const data = await response.json();
+      console.log("Resposta do download:", data);
+
+      // Se recebemos uma URL direta para streaming
+      if (data.url) {
+        if (Array.isArray(data.url)) {
+          // Caso especial para formatos que retornam múltiplas URLs (áudio e vídeo separados)
+          toast.success("Download disponível! Abrindo arquivo...");
+          window.open(data.url[0], "_blank");
+        } else {
+          toast.success("Download disponível! Abrindo arquivo...");
+          window.open(data.url, "_blank");
+        }
+      } 
+      // Redireciona para o endpoint de streaming se temos uma URL de download
+      else if (data.downloadUrl) {
+        window.location.href = data.downloadUrl;
+        toast.success("Download iniciado com sucesso!");
+      } else {
+        throw new Error("Resposta inesperada do servidor");
+      }
     } catch (error) {
       console.error("Erro:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao iniciar o download");
@@ -111,7 +172,10 @@ export default function DownloadPage() {
                 />
                 <div className="text-center sm:text-left">
                   <h3 className="text-lg font-medium text-gray-800">{videoInfo.title}</h3>
-                  <p className="text-sm text-gray-600">{videoInfo.duration}</p>
+                  <p className="text-sm text-gray-600">
+                    {videoInfo.duration ? `${Math.floor(videoInfo.duration / 60)}:${(videoInfo.duration % 60).toString().padStart(2, '0')}` : ''} 
+                    {videoInfo.author ? ` • ${videoInfo.author}` : ''}
+                  </p>
                 </div>
               </div>
             </div>
@@ -120,7 +184,7 @@ export default function DownloadPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="glass-effect rounded-xl shadow-lg p-6">
               <label className="block text-sm font-medium text-gray-800 mb-4">Formato</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   type="button"
                   onClick={() => setFormat("video")}
@@ -132,18 +196,6 @@ export default function DownloadPage() {
                 >
                   <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
                   Vídeo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormat("shorts")}
-                  className={`${
-                    format === "shorts"
-                      ? "border-indigo-600 bg-indigo-600 text-white"
-                      : "border-gray-300 bg-white text-gray-700"
-                  } flex items-center justify-center rounded-lg border px-6 py-4 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200 w-full`}
-                >
-                  <FilmIcon className="h-5 w-5 mr-2" />
-                  Shorts
                 </button>
                 <button
                   type="button"
