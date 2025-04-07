@@ -20,9 +20,9 @@ export async function GET(request: NextRequest) {
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // Configurações simplificadas para evitar bloqueio
+    // Configurações avançadas para evitar bloqueio
     const options = {
-      format: format === "audio" ? "bestaudio" : "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best",
+      format: format === "audio" ? "bestaudio" : "bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/best[height<=360][ext=mp4]/best",
       output: "-",
       noCheckCertificates: true,
       noWarnings: true,
@@ -89,7 +89,10 @@ export async function GET(request: NextRequest) {
       ignoreErrors: true,
       noColor: true,
       noProgress: true,
-      noCallHome: true
+      noCallHome: true,
+      // Opções de proxy (se disponível)
+      proxy: process.env.PROXY_URL || undefined,
+      sourceAddress: process.env.SOURCE_IP || undefined
     };
 
     // Ajusta qualidade para vídeo
@@ -99,10 +102,10 @@ export async function GET(request: NextRequest) {
           options.format = "worstvideo[ext=mp4]+worstaudio[ext=m4a]/worst[ext=mp4]/worst";
           break;
         case "medium":
-          options.format = "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best";
+          options.format = "bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/best[height<=360][ext=mp4]/best";
           break;
         case "high":
-          options.format = "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best";
+          options.format = "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best";
           break;
       }
     }
