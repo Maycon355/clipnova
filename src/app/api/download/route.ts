@@ -6,9 +6,10 @@ export const dynamic = "force-dynamic";
 // Serviços para obter URLs diretas do YouTube
 const YT_SERVICES = [
   "https://api.fillyourbrain.org/api/youtube/video", // Endpoint mais confiável
-  "https://ytembed.herokuapp.com/download",          // Alternativa 1
-  "https://cobalt.tools/api/json",                   // Alternativa 2
-  "https://co.wuk.sh/api/json"                       // Alternativa 3
+  "https://api.vevioz.com/api/button/videos", // Serviço simples e estável
+  "https://ytembed.herokuapp.com/download",    // Alternativa 1
+  "https://cobalt.tools/api/json",             // Alternativa 2
+  "https://co.wuk.sh/api/json"                 // Alternativa 3
 ];
 
 // Função para verificar se uma resposta é JSON válido
@@ -78,10 +79,36 @@ async function getDirect(videoId: string, quality: string = "high", format: stri
     }
   }
   
-  // Tenta o segundo serviço (ytembed.herokuapp.com)
+  // Tenta o segundo serviço (vevioz API - serviço simples)
   try {
     console.log(`[INFO] Tentando obter URL direta via ${YT_SERVICES[1]}`);
-    const response = await axios.get(`${YT_SERVICES[1]}?url=https://youtube.com/watch?v=${videoId}&format=${format === "audio" ? "mp3" : "mp4"}&quality=${quality === "high" ? "high" : quality === "medium" ? "medium" : "low"}`, {
+    const qualityParam = format === "audio" ? "mp3" : (quality === "high" ? "720" : "360");
+    
+    // Este serviço funciona por acesso direto, então montamos a URL e verificamos se o endpoint está ativo
+    const checkResponse = await axios.get(`${YT_SERVICES[1]}?url=https://youtube.com/watch?v=${videoId}`, {
+      timeout: 5000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html'
+      }
+    });
+    
+    if (checkResponse.status === 200) {
+      // Se o serviço estiver ativo, podemos formar a URL direta
+      const directUrl = `${YT_SERVICES[1]}/${qualityParam}/${videoId}`;
+      return directUrl;
+    } else {
+      throw new Error("Serviço indisponível");
+    }
+  } catch (error) {
+    console.error(`[ERRO] Falha ao obter URL via ${YT_SERVICES[1]}:`, error instanceof Error ? error.message : String(error));
+    lastError = error instanceof Error ? error : new Error(String(error));
+  }
+  
+  // Tenta o terceiro serviço (ytembed.herokuapp.com)
+  try {
+    console.log(`[INFO] Tentando obter URL direta via ${YT_SERVICES[2]}`);
+    const response = await axios.get(`${YT_SERVICES[2]}?url=https://youtube.com/watch?v=${videoId}&format=${format === "audio" ? "mp3" : "mp4"}&quality=${quality === "high" ? "high" : quality === "medium" ? "medium" : "low"}`, {
       timeout: 6000, // Timeout mais curto
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -99,14 +126,14 @@ async function getDirect(videoId: string, quality: string = "high", format: stri
       throw new Error("URL não encontrada na resposta");
     }
   } catch (error) {
-    console.error(`[ERRO] Falha ao obter URL via ${YT_SERVICES[1]}:`, error instanceof Error ? error.message : String(error));
+    console.error(`[ERRO] Falha ao obter URL via ${YT_SERVICES[2]}:`, error instanceof Error ? error.message : String(error));
     lastError = error instanceof Error ? error : new Error(String(error));
   }
   
-  // Tenta o terceiro serviço (cobalt.tools)
+  // Tenta o quarto serviço (cobalt.tools)
   try {
-    console.log(`[INFO] Tentando obter URL direta via ${YT_SERVICES[2]}`);
-    const response = await axios.post(YT_SERVICES[2], {
+    console.log(`[INFO] Tentando obter URL direta via ${YT_SERVICES[3]}`);
+    const response = await axios.post(YT_SERVICES[3], {
       url: `https://youtube.com/watch?v=${videoId}`,
       vCodec: "h264",
       vQuality: quality === "high" ? "1080" : quality === "medium" ? "720" : "360",
@@ -134,14 +161,14 @@ async function getDirect(videoId: string, quality: string = "high", format: stri
       throw new Error("URL não encontrada na resposta");
     }
   } catch (error) {
-    console.error(`[ERRO] Falha ao obter URL via ${YT_SERVICES[2]}:`, error instanceof Error ? error.message : String(error));
+    console.error(`[ERRO] Falha ao obter URL via ${YT_SERVICES[3]}:`, error instanceof Error ? error.message : String(error));
     lastError = error instanceof Error ? error : new Error(String(error));
   }
   
-  // Tenta o quarto serviço (co.wuk.sh)
+  // Tenta o quinto serviço (co.wuk.sh)
   try {
-    console.log(`[INFO] Tentando obter URL direta via ${YT_SERVICES[3]}`);
-    const response = await axios.post(YT_SERVICES[3], {
+    console.log(`[INFO] Tentando obter URL direta via ${YT_SERVICES[4]}`);
+    const response = await axios.post(YT_SERVICES[4], {
       url: `https://youtube.com/watch?v=${videoId}`,
       vCodec: "h264",
       vQuality: quality === "high" ? "1080" : quality === "medium" ? "720" : "360",
@@ -172,7 +199,7 @@ async function getDirect(videoId: string, quality: string = "high", format: stri
       throw new Error("URL não encontrada na resposta");
     }
   } catch (error) {
-    console.error(`[ERRO] Falha ao obter URL via ${YT_SERVICES[3]}:`, error instanceof Error ? error.message : String(error));
+    console.error(`[ERRO] Falha ao obter URL via ${YT_SERVICES[4]}:`, error instanceof Error ? error.message : String(error));
     lastError = error instanceof Error ? error : new Error(String(error));
   }
   

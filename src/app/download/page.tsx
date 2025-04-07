@@ -15,6 +15,9 @@ export default function DownloadPage() {
   const [format, setFormat] = useState("video");
   const [quality, setQuality] = useState("high");
   const [videoInfo, setVideoInfo] = useState<any>(null);
+  const [error, setError] = useState("");
+  const [fallbackMessage, setFallbackMessage] = useState("");
+  const [downloadUrl, setDownloadUrl] = useState<string>("");
 
   // Extrair videoId da URL do YouTube
   const extractVideoId = (url: string): string | null => {
@@ -71,74 +74,80 @@ export default function DownloadPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url) {
-      toast.error("Por favor, insira uma URL do YouTube");
-      return;
-    }
-
-    const videoId = extractVideoId(url);
-    if (!videoId) {
-      toast.error("URL do YouTube inválida. Certifique-se de copiar a URL completa do vídeo.");
-      return;
-    }
-
+    setError("");
     setLoading(true);
-    toast.loading("Processando seu download...", { id: "downloadToast" });
-    
+    setVideoInfo(null);
+
     try {
-      console.log(`Iniciando download para o vídeo ID: ${videoId}, formato: ${format}, qualidade: ${quality}`);
-      const response = await fetch("/api/download", {
+      const videoId = extractVideoId(url);
+      if (!videoId) {
+        setError("URL de vídeo inválida. Certifique-se de que é uma URL do YouTube válida.");
+        setLoading(false);
+        return;
+      }
+
+      // Primeiro, obtem informações do vídeo
+      const videoInfoResponse = await fetch("/api/video-info", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ videoId, format, quality }),
+        body: JSON.stringify({ videoId }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Erro da API:", errorData);
-        
-        // Se houver um fallback disponível, redireciona para ele
-        if (errorData.fallback) {
-          console.log("Usando fallback:", errorData.fallback);
-          toast.dismiss("downloadToast");
-          toast.success("Redirecionando para método alternativo...");
-          window.location.href = errorData.fallback;
-          return;
-        }
-        
-        throw new Error(errorData.error || "Erro ao processar download");
+      if (!videoInfoResponse.ok) {
+        const errorData = await videoInfoResponse.json();
+        throw new Error(errorData.error || "Erro ao obter informações do vídeo");
       }
 
-      const data = await response.json();
-      console.log("Resposta do download:", data);
-      toast.dismiss("downloadToast");
+      const videoData = await videoInfoResponse.json();
+      setVideoInfo(videoData);
 
-      // Se recebemos uma URL direta para streaming
-      if (data.url) {
-        if (Array.isArray(data.url)) {
-          // Caso especial para formatos que retornam múltiplas URLs (áudio e vídeo separados)
-          toast.success("Download disponível! Abrindo arquivo...");
-          window.open(data.url[0], "_blank");
-        } else {
-          toast.success("Download disponível! Abrindo arquivo...");
-          window.open(data.url, "_blank");
-        }
-      } 
-      // Redireciona para o endpoint de streaming se temos uma URL de download
-      else if (data.downloadUrl) {
-        window.location.href = data.downloadUrl;
-        toast.success("Download iniciado com sucesso!");
-      } else {
-        throw new Error("Resposta inesperada do servidor");
+      // Em seguida, obtem URL de download
+      const downloadResponse = await fetch("/api/download", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          videoId,
+          format: format,
+          quality: quality,
+        }),
+      });
+
+      if (!downloadResponse.ok) {
+        const errorData = await downloadResponse.json();
+        throw new Error(errorData.error || "Erro ao obter URL de download");
       }
+
+      const downloadData = await downloadResponse.json();
+      
+      // Verifica se é um redirecionamento para fallback
+      if (downloadData.isRedirect) {
+        if (downloadData.error) {
+          setFallbackMessage(downloadData.error);
+        }
+        
+        // Redirecionar para o fallback
+        window.location.href = downloadData.url;
+        return;
+      }
+
+      // Se não for redirecionamento, continua normalmente
+      const downloadUrl = downloadData.url;
+      setDownloadUrl(downloadUrl);
+
+      // Inicia o download automaticamente
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `youtube_${videoId}_${format}.${format === "audio" ? "mp3" : "mp4"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } catch (error) {
-      console.error("Erro:", error);
-      toast.dismiss("downloadToast");
-      toast.error(error instanceof Error 
-        ? `Erro: ${error.message}. Por favor, tente novamente mais tarde.` 
-        : "Erro ao iniciar o download. O serviço pode estar indisponível temporariamente.");
+      console.error("Erro durante o download:", error);
+      setError(error instanceof Error ? error.message : String(error));
     } finally {
       setLoading(false);
     }
