@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import ytdl from "ytdl-core";
+import ytdl from "@distube/ytdl-core";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,32 +19,33 @@ export async function GET(request: NextRequest) {
 
     // Configurações avançadas para evitar bloqueio
     const requestOptions = {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Cache-Control': 'max-age=0'
-      }
+      requestOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Sec-Fetch-User': '?1',
+          'Cache-Control': 'max-age=0'
+        }
+      },
+      lang: 'pt-BR'
     };
 
-    // Tentar obter informações do vídeo
+    // Tentar obter informações do vídeo com retry
     let info;
     let retryCount = 0;
     const maxRetries = 3;
-    const delays = [1000, 2000, 4000]; // Atrasos progressivos
+    const delays = [1000, 2000, 4000];
 
     while (retryCount < maxRetries) {
       try {
-        info = await ytdl.getBasicInfo(url, {
-          requestOptions: requestOptions
-        });
+        info = await ytdl.getInfo(url, requestOptions);
         break;
       } catch (error: any) {
         console.error(`Tentativa ${retryCount + 1} falhou:`, error.message);
@@ -54,7 +55,6 @@ export async function GET(request: NextRequest) {
           throw new Error(`Falha após ${maxRetries} tentativas: ${error.message}`);
         }
         
-        // Esperar com atraso progressivo
         await new Promise(resolve => setTimeout(resolve, delays[retryCount - 1]));
       }
     }
@@ -63,44 +63,63 @@ export async function GET(request: NextRequest) {
       throw new Error("Não foi possível obter informações do vídeo");
     }
 
-    // Configurar formato e qualidade
-    let downloadOptions: ytdl.downloadOptions = {
-      requestOptions: requestOptions,
-      quality: format === "audio" ? "highestaudio" : "highest"
-    };
-
+    // Selecionar o melhor formato baseado nas preferências
+    let selectedFormat;
+    
     if (format === "video") {
-      downloadOptions = {
-        ...downloadOptions,
-        filter: "audioandvideo",
-        quality: quality === "low" ? "lowest" : quality === "medium" ? "18" : "highest"
-      };
+      const videoFormats = ytdl.filterFormats(info.formats, 'videoandaudio');
+      
+      switch (quality) {
+        case "low":
+          selectedFormat = videoFormats.find(f => f.qualityLabel === '360p') || videoFormats[0];
+          break;
+        case "medium":
+          selectedFormat = videoFormats.find(f => f.qualityLabel === '720p') || videoFormats[0];
+          break;
+        case "high":
+          selectedFormat = videoFormats.sort((a, b) => (b.height || 0) - (a.height || 0))[0];
+          break;
+        default:
+          selectedFormat = videoFormats[0];
+      }
     } else if (format === "audio") {
-      downloadOptions = {
-        ...downloadOptions,
-        filter: "audioonly",
-        quality: quality === "low" ? "lowestaudio" : "highestaudio"
-      };
+      const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
+      selectedFormat = audioFormats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0))[0];
+    }
+
+    if (!selectedFormat) {
+      throw new Error("Não foi possível encontrar um formato adequado para download");
     }
 
     // Criar stream com retry
-    let stream: ReturnType<typeof ytdl> | undefined;
+    let stream: ReturnType<typeof ytdl.downloadFromInfo>;
     retryCount = 0;
 
     while (retryCount < maxRetries) {
       try {
-        const tempStream = ytdl(url, downloadOptions);
-        
+        stream = ytdl.downloadFromInfo(info, {
+          ...requestOptions,
+          format: selectedFormat
+        });
+
         // Verificar se o stream é válido
         await new Promise((resolve, reject) => {
-          tempStream.once('response', resolve);
-          tempStream.once('error', reject);
-          
-          // Timeout de 5 segundos
-          setTimeout(() => reject(new Error('Timeout ao iniciar stream')), 5000);
+          const timeout = setTimeout(() => {
+            stream?.destroy();
+            reject(new Error('Timeout ao iniciar stream'));
+          }, 5000);
+
+          stream.once('response', () => {
+            clearTimeout(timeout);
+            resolve(true);
+          });
+
+          stream.once('error', (error: Error) => {
+            clearTimeout(timeout);
+            reject(error);
+          });
         });
-        
-        stream = tempStream;
+
         break;
       } catch (error) {
         console.error(`Tentativa de stream ${retryCount + 1} falhou:`, error);
