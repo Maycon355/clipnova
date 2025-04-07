@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
 // Configuração para deploy no Vercel - Teste de commit e push
-// ATENÇÃO: Forçando novo deploy no Vercel - Ignorar este comentário
+// ATENÇÃO: Removendo maxDuration para testar compatibilidade
 export const dynamic = "force-dynamic";
-export const maxDuration = 5; // Limita a execução a 5 segundos no máximo
+// Removido maxDuration para testar compatibilidade com Vercel
 
 // Função para obter URL do Y2mate (extremamente rápido)
 function getY2mateUrl(videoId: string) {
