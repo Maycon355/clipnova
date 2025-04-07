@@ -16,88 +16,88 @@ export async function GET(request: NextRequest) {
     }
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const info = await ytdl.getInfo(url);
 
-    // Configurar opções de download com base no formato e qualidade
-    let options: ytdl.downloadOptions = {};
-    
+    // Configuração padrão do ytdl
+    const defaultOptions = {
+      requestOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Connection': 'keep-alive',
+          'Cookie': '', // YouTube pode exigir cookies em algumas requisições
+          'Referer': 'https://www.youtube.com/'
+        },
+      }
+    };
+
+    // Tentar obter informações do vídeo com retry
+    let info;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        info = await ytdl.getInfo(url, defaultOptions);
+        break;
+      } catch (error) {
+        retryCount++;
+        if (retryCount === maxRetries) {
+          throw error;
+        }
+        // Esperar um pouco antes de tentar novamente
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
+    }
+
+    // Verificar se info foi obtido com sucesso
+    if (!info) {
+      throw new Error("Não foi possível obter informações do vídeo");
+    }
+
+    // Configurar opções de download
+    let streamOptions: ytdl.downloadOptions = {
+      ...defaultOptions
+    };
+
     if (format === "video") {
+      const formats = ytdl.filterFormats(info.formats, 'videoandaudio');
+      let selectedFormat;
+
       switch (quality) {
         case "low":
-          options = {
-            quality: "18", // 360p
-            filter: "videoandaudio",
-          };
+          selectedFormat = formats.find(f => f.qualityLabel === '360p') || formats[0];
           break;
         case "medium":
-          options = {
-            quality: "22", // 720p
-            filter: "videoandaudio",
-          };
+          selectedFormat = formats.find(f => f.qualityLabel === '720p') || formats[0];
           break;
         case "high":
+          selectedFormat = formats.sort((a, b) => Number(b.height) - Number(a.height))[0];
+          break;
         default:
-          options = {
-            quality: "highest",
-            filter: "videoandaudio",
-          };
-          break;
+          selectedFormat = formats[0];
       }
-    } else if (format === "shorts") {
-      switch (quality) {
-        case "low":
-          options = {
-            quality: "18",
-            filter: "videoandaudio",
-            range: {
-              start: 0,
-              end: 60 * 1000,
-            },
-          };
-          break;
-        case "medium":
-          options = {
-            quality: "22",
-            filter: "videoandaudio",
-            range: {
-              start: 0,
-              end: 60 * 1000,
-            },
-          };
-          break;
-        case "high":
-        default:
-          options = {
-            quality: "highest",
-            filter: "videoandaudio",
-            range: {
-              start: 0,
-              end: 60 * 1000,
-            },
-          };
-          break;
-      }
+
+      streamOptions.format = selectedFormat;
     } else if (format === "audio") {
-      switch (quality) {
-        case "low":
-          options = {
-            quality: "lowestaudio",
-            filter: "audioonly",
-          };
-          break;
-        case "medium":
-          options = {
-            quality: "highestaudio",
-            filter: "audioonly",
-          };
-          break;
-        case "high":
-        default:
-          options = {
-            quality: "highestaudio",
-            filter: "audioonly",
-          };
-          break;
+      const formats = ytdl.filterFormats(info.formats, 'audioonly');
+      streamOptions.format = formats.sort((a, b) => Number(b.audioBitrate) - Number(a.audioBitrate))[0];
+    }
+
+    // Criar stream com retry
+    let stream;
+    retryCount = 0;
+
+    while (retryCount < maxRetries) {
+      try {
+        stream = ytdl(url, streamOptions);
+        break;
+      } catch (error) {
+        retryCount++;
+        if (retryCount === maxRetries) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
       }
     }
 
@@ -111,16 +111,18 @@ export async function GET(request: NextRequest) {
       "Content-Type": format === "audio" ? "audio/mpeg" : "video/mp4",
     };
 
-    // Criar stream do vídeo
-    const stream = ytdl(url, options);
-
-    // Retornar stream como resposta
     return new NextResponse(stream as any, { headers });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao processar stream:", error);
+    
+    // Mensagem de erro mais detalhada
+    const errorMessage = error.statusCode === 410 
+      ? "O YouTube bloqueou temporariamente o download. Por favor, tente novamente em alguns minutos."
+      : "Erro ao processar stream. Por favor, tente novamente.";
+    
     return NextResponse.json(
-      { error: "Erro ao processar stream" },
-      { status: 500 }
+      { error: errorMessage },
+      { status: error.statusCode || 500 }
     );
   }
 } 
