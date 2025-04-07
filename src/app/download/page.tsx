@@ -18,10 +18,26 @@ export default function DownloadPage() {
 
     setLoading(true);
     try {
-      // TODO: Implementar a lógica de download
+      const response = await fetch("/api/download", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url, format }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao processar download");
+      }
+
+      // Iniciar download
+      window.location.href = data.downloadUrl;
       toast.success("Download iniciado com sucesso!");
     } catch (error) {
-      toast.error("Erro ao iniciar o download");
+      console.error("Erro:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao iniciar o download");
     } finally {
       setLoading(false);
     }
@@ -65,8 +81,8 @@ export default function DownloadPage() {
                 onClick={() => setFormat("video")}
                 className={`${
                   format === "video"
-                    ? "border-indigo-600 bg-indigo-50"
-                    : "border-gray-300 bg-white"
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-gray-300 bg-white text-gray-700"
                 } flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium shadow-sm hover:bg-gray-50`}
               >
                 <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
@@ -77,8 +93,8 @@ export default function DownloadPage() {
                 onClick={() => setFormat("shorts")}
                 className={`${
                   format === "shorts"
-                    ? "border-indigo-600 bg-indigo-50"
-                    : "border-gray-300 bg-white"
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-gray-300 bg-white text-gray-700"
                 } flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium shadow-sm hover:bg-gray-50`}
               >
                 <FilmIcon className="h-5 w-5 mr-2" />
@@ -89,8 +105,8 @@ export default function DownloadPage() {
                 onClick={() => setFormat("audio")}
                 className={`${
                   format === "audio"
-                    ? "border-indigo-600 bg-indigo-50"
-                    : "border-gray-300 bg-white"
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-gray-300 bg-white text-gray-700"
                 } flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium shadow-sm hover:bg-gray-50`}
               >
                 <CloudArrowUpIcon className="h-5 w-5 mr-2" />
