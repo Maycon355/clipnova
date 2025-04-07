@@ -101,16 +101,53 @@ export default function DownloadPage() {
 
       const videoData = await videoInfoResponse.json();
       setVideoInfo(videoData);
-
-      // Redirecionar diretamente para a API de download com os parâmetros
-      window.location.href = `/api/download?videoId=${videoId}&format=${format}&quality=${quality}`;
       
-      // Importante: como estamos redirecionando a página, o código abaixo não será executado
-      // Ele está aqui apenas para manter a lógica caso o redirecionamento não ocorra
+      // Obter URL de download do endpoint da API
+      const downloadResponse = await fetch("/api/download", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          videoId,
+          format,
+          quality,
+        }),
+      });
 
+      if (!downloadResponse.ok) {
+        const errorData = await downloadResponse.json();
+        throw new Error(errorData.error || "Erro ao obter URL de download");
+      }
+
+      const downloadData = await downloadResponse.json();
+      setDownloadUrl(downloadData.url);
+      
+      if (downloadData.isDirectUrl) {
+        // É uma URL direta do vídeo, podemos iniciar o download automaticamente
+        toast.success("URL de download obtida! Iniciando download...");
+        
+        // Criar um link com a URL direta e simular um clique para iniciar o download
+        const downloadLink = document.createElement("a");
+        downloadLink.href = downloadData.url;
+        downloadLink.download = `${videoData.title || `youtube_${videoId}`}.${format === "audio" ? "mp3" : "mp4"}`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+      } else if (downloadData.isRedirect) {
+        // É um redirecionamento para outro endpoint (fallback)
+        toast.success("Usando método alternativo de download...");
+        window.location.href = downloadData.url;
+      } else {
+        // Apenas exibir a URL para o usuário
+        toast.success("URL de download obtida!");
+        setDownloadUrl(downloadData.url);
+      }
     } catch (error) {
       console.error("Erro durante o download:", error);
       setError(error instanceof Error ? error.message : String(error));
+      toast.error("Erro ao obter o download. Tente novamente mais tarde.");
+    } finally {
       setLoading(false);
     }
   };
