@@ -17,88 +17,104 @@ export async function GET(request: NextRequest) {
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // Configuração padrão do ytdl
-    const defaultOptions = {
-      requestOptions: {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Connection': 'keep-alive',
-          'Cookie': '', // YouTube pode exigir cookies em algumas requisições
-          'Referer': 'https://www.youtube.com/'
-        },
+    // Configurações avançadas para evitar bloqueio
+    const requestOptions = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0'
       }
     };
 
-    // Tentar obter informações do vídeo com retry
+    // Tentar obter informações do vídeo
     let info;
     let retryCount = 0;
     const maxRetries = 3;
+    const delays = [1000, 2000, 4000]; // Atrasos progressivos
 
     while (retryCount < maxRetries) {
       try {
-        info = await ytdl.getInfo(url, defaultOptions);
+        info = await ytdl.getBasicInfo(url, {
+          requestOptions: requestOptions
+        });
         break;
-      } catch (error) {
+      } catch (error: any) {
+        console.error(`Tentativa ${retryCount + 1} falhou:`, error.message);
         retryCount++;
+        
         if (retryCount === maxRetries) {
-          throw error;
+          throw new Error(`Falha após ${maxRetries} tentativas: ${error.message}`);
         }
-        // Esperar um pouco antes de tentar novamente
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        
+        // Esperar com atraso progressivo
+        await new Promise(resolve => setTimeout(resolve, delays[retryCount - 1]));
       }
     }
 
-    // Verificar se info foi obtido com sucesso
     if (!info) {
       throw new Error("Não foi possível obter informações do vídeo");
     }
 
-    // Configurar opções de download
-    let streamOptions: ytdl.downloadOptions = {
-      ...defaultOptions
+    // Configurar formato e qualidade
+    let downloadOptions: ytdl.downloadOptions = {
+      requestOptions: requestOptions,
+      quality: format === "audio" ? "highestaudio" : "highest"
     };
 
     if (format === "video") {
-      const formats = ytdl.filterFormats(info.formats, 'videoandaudio');
-      let selectedFormat;
-
-      switch (quality) {
-        case "low":
-          selectedFormat = formats.find(f => f.qualityLabel === '360p') || formats[0];
-          break;
-        case "medium":
-          selectedFormat = formats.find(f => f.qualityLabel === '720p') || formats[0];
-          break;
-        case "high":
-          selectedFormat = formats.sort((a, b) => Number(b.height) - Number(a.height))[0];
-          break;
-        default:
-          selectedFormat = formats[0];
-      }
-
-      streamOptions.format = selectedFormat;
+      downloadOptions = {
+        ...downloadOptions,
+        filter: "audioandvideo",
+        quality: quality === "low" ? "lowest" : quality === "medium" ? "18" : "highest"
+      };
     } else if (format === "audio") {
-      const formats = ytdl.filterFormats(info.formats, 'audioonly');
-      streamOptions.format = formats.sort((a, b) => Number(b.audioBitrate) - Number(a.audioBitrate))[0];
+      downloadOptions = {
+        ...downloadOptions,
+        filter: "audioonly",
+        quality: quality === "low" ? "lowestaudio" : "highestaudio"
+      };
     }
 
     // Criar stream com retry
-    let stream;
+    let stream: ReturnType<typeof ytdl> | undefined;
     retryCount = 0;
 
     while (retryCount < maxRetries) {
       try {
-        stream = ytdl(url, streamOptions);
+        stream = ytdl(url, downloadOptions);
+        
+        // Verificar se o stream é válido
+        await new Promise((resolve, reject) => {
+          stream.once('response', resolve);
+          stream.once('error', reject);
+          
+          // Timeout de 5 segundos
+          setTimeout(() => reject(new Error('Timeout ao iniciar stream')), 5000);
+        });
+        
         break;
       } catch (error) {
+        console.error(`Tentativa de stream ${retryCount + 1} falhou:`, error);
         retryCount++;
+        
         if (retryCount === maxRetries) {
           throw error;
         }
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        
+        await new Promise(resolve => setTimeout(resolve, delays[retryCount - 1]));
       }
+    }
+
+    if (!stream) {
+      throw new Error("Não foi possível criar o stream de download");
     }
 
     // Configurar headers para download
@@ -115,14 +131,20 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error("Erro ao processar stream:", error);
     
-    // Mensagem de erro mais detalhada
-    const errorMessage = error.statusCode === 410 
-      ? "O YouTube bloqueou temporariamente o download. Por favor, tente novamente em alguns minutos."
-      : "Erro ao processar stream. Por favor, tente novamente.";
+    let errorMessage = "Erro ao processar stream. Por favor, tente novamente.";
+    let statusCode = 500;
+
+    if (error.statusCode === 410) {
+      errorMessage = "O YouTube está temporariamente bloqueando downloads. Por favor, aguarde alguns minutos e tente novamente.";
+      statusCode = 410;
+    } else if (error.message.includes("Timeout")) {
+      errorMessage = "O download demorou muito para iniciar. Por favor, tente novamente.";
+      statusCode = 408;
+    }
     
     return NextResponse.json(
       { error: errorMessage },
-      { status: error.statusCode || 500 }
+      { status: statusCode }
     );
   }
 } 
