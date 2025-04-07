@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const videoDetails = info.videoDetails;
 
     // Formatar duração
-    const duration = videoDetails.lengthSeconds;
+    const duration = Number(videoDetails.lengthSeconds);
     const minutes = Math.floor(duration / 60);
     const seconds = duration % 60;
     const formattedDuration = `${minutes}:${seconds.toString().padStart(2, "0")}`;
