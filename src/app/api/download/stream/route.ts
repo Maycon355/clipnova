@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import ytdl from "ytdl-core";
+import youtubeDl from "youtube-dl-exec";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,133 +18,90 @@ export async function GET(request: NextRequest) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
 
     // Configurações avançadas para evitar bloqueio
-    const requestOptions = {
-      requestOptions: {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-          'Sec-Fetch-Dest': 'document',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Site': 'none',
-          'Sec-Fetch-User': '?1',
-          'Cache-Control': 'max-age=0'
-        }
-      }
+    const options = {
+      format: format === "audio" ? "bestaudio" : "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+      output: "-",
+      noCheckCertificates: true,
+      noWarnings: true,
+      preferFreeFormats: true,
+      addHeader: [
+        "referer:youtube.com",
+        "user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "accept-language:pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "sec-ch-ua:\"Chromium\";v=\"122\", \"Not(A:Brand\";v=\"24\", \"Google Chrome\";v=\"122\"",
+        "sec-ch-ua-mobile:?0",
+        "sec-ch-ua-platform:\"Windows\"",
+        "sec-fetch-dest:document",
+        "sec-fetch-mode:navigate",
+        "sec-fetch-site:none",
+        "sec-fetch-user:?1",
+        "upgrade-insecure-requests:1"
+      ],
+      cookies: "cookies.txt",
+      noCacheDir: true,
+      geoBypass: true,
+      geoBypassCountry: "BR",
+      extractorArgs: ["youtube:player_client=all"],
+      formatSort: ["res", "ext:mp4:m4a", "size", "br", "asr", "proto"],
+      mergeOutputFormat: "mp4",
+      retries: 3,
+      fragmentRetries: 3,
+      fileAccessRetries: 3,
+      externalDownloader: "aria2c",
+      externalDownloaderArgs: "--min-split-size=1M --max-connection-per-server=16 --max-concurrent-downloads=16 --split=16"
     };
 
-    // Tentar obter informações do vídeo com retry
-    let info;
-    let retryCount = 0;
-    const maxRetries = 3;
-    const delays = [1000, 2000, 4000];
-
-    while (retryCount < maxRetries) {
-      try {
-        info = await ytdl.getInfo(url, requestOptions);
-        break;
-      } catch (error: any) {
-        console.error(`Tentativa ${retryCount + 1} falhou:`, error.message);
-        retryCount++;
-        
-        if (retryCount === maxRetries) {
-          throw new Error(`Falha após ${maxRetries} tentativas: ${error.message}`);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, delays[retryCount - 1]));
-      }
-    }
-
-    if (!info) {
-      throw new Error("Não foi possível obter informações do vídeo");
-    }
-
-    // Selecionar o melhor formato baseado nas preferências
-    let selectedFormat;
-    
+    // Ajusta qualidade para vídeo
     if (format === "video") {
-      const videoFormats = ytdl.filterFormats(info.formats, 'videoandaudio');
-      
       switch (quality) {
         case "low":
-          selectedFormat = videoFormats.find(f => f.qualityLabel === '360p') || videoFormats[0];
+          options.format = "worstvideo[ext=mp4]+worstaudio[ext=m4a]/worst[ext=mp4]/worst";
           break;
         case "medium":
-          selectedFormat = videoFormats.find(f => f.qualityLabel === '720p') || videoFormats[0];
+          options.format = "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best";
           break;
         case "high":
-          selectedFormat = videoFormats.sort((a, b) => (b.height || 0) - (a.height || 0))[0];
+          options.format = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best";
           break;
-        default:
-          selectedFormat = videoFormats[0];
       }
-    } else if (format === "audio") {
-      const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
-      selectedFormat = audioFormats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0))[0];
     }
 
-    if (!selectedFormat) {
-      throw new Error("Não foi possível encontrar um formato adequado para download");
-    }
+    // Tenta fazer o download com retry
+    let retries = 3;
+    let lastError;
 
-    // Criar stream com retry
-    let stream: ReturnType<typeof ytdl.downloadFromInfo> | undefined = undefined;
-    retryCount = 0;
-
-    while (retryCount < maxRetries) {
+    while (retries > 0) {
       try {
-        const tempStream = ytdl.downloadFromInfo(info, {
-          format: selectedFormat,
-          ...requestOptions
+        const stream = await youtubeDl(url, options);
+        
+        // Configura headers da resposta
+        const headers = new Headers();
+        headers.set("Content-Type", format === "audio" ? "audio/mpeg" : "video/mp4");
+        headers.set("Content-Disposition", `attachment; filename="download.${format === "audio" ? "mp3" : "mp4"}"`);
+        headers.set("Access-Control-Allow-Origin", "*");
+        headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+        headers.set("Access-Control-Allow-Headers", "Content-Type");
+
+        return new NextResponse(stream as unknown as BodyInit, {
+          headers,
+          status: 200
         });
-
-        // Validar se o stream foi criado corretamente
-        if (!tempStream) {
-          throw new Error("Stream não foi criado corretamente");
+      } catch (error) {
+        lastError = error;
+        retries--;
+        if (retries > 0) {
+          // Aumenta o tempo de espera entre tentativas
+          await new Promise(resolve => setTimeout(resolve, 2000 * (3 - retries)));
         }
-
-        stream = tempStream;
-        break;
-      } catch (error: any) {
-        console.error(`Tentativa ${retryCount + 1} de criar stream falhou:`, error.message);
-        retryCount++;
-        
-        if (retryCount === maxRetries) {
-          throw new Error(`Falha ao criar stream após ${maxRetries} tentativas: ${error.message}`);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, delays[retryCount - 1]));
       }
     }
 
-    if (!stream) {
-      throw new Error("Não foi possível criar o stream de download");
-    }
-
-    // Configurar timeout para o stream
-    const streamTimeout = setTimeout(() => {
-      stream?.destroy();
-    }, 5000);
-
-    // Configurar headers da resposta
-    const headers = new Headers();
-    headers.set('Content-Type', format === 'audio' ? 'audio/mpeg' : 'video/mp4');
-    headers.set('Content-Disposition', `attachment; filename="${info.videoDetails.title}.${format === 'audio' ? 'mp3' : 'mp4'}"`);
-    headers.set('Content-Length', selectedFormat.contentLength || '0');
-
-    // Retornar o stream como resposta
-    return new NextResponse(stream as any, {
-      headers,
-      status: 200
-    });
-
-  } catch (error: any) {
-    console.error('Erro no download:', error);
+    throw lastError;
+  } catch (error) {
+    console.error("Erro no download:", error);
     return NextResponse.json(
-      { error: error.message || "Erro ao processar o download" },
+      { error: "Erro ao processar o download do vídeo" },
       { status: 500 }
     );
   }
