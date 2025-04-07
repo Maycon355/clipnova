@@ -89,17 +89,18 @@ export async function GET(request: NextRequest) {
 
     while (retryCount < maxRetries) {
       try {
-        stream = ytdl(url, downloadOptions);
+        const tempStream = ytdl(url, downloadOptions);
         
         // Verificar se o stream é válido
         await new Promise((resolve, reject) => {
-          stream.once('response', resolve);
-          stream.once('error', reject);
+          tempStream.once('response', resolve);
+          tempStream.once('error', reject);
           
           // Timeout de 5 segundos
           setTimeout(() => reject(new Error('Timeout ao iniciar stream')), 5000);
         });
         
+        stream = tempStream;
         break;
       } catch (error) {
         console.error(`Tentativa de stream ${retryCount + 1} falhou:`, error);
