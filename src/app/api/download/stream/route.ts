@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import youtubeDl from "youtube-dl-exec";
 import type { OptionFormatSortPlus } from "youtube-dl-exec";
+import { getCachedDownload, recordDownloadAttempt } from "@/lib/cache";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,14 @@ export async function GET(request: NextRequest) {
         { error: "Parâmetros inválidos" },
         { status: 400 }
       );
+    }
+
+    // Verifica se o download está em cache
+    const cachedDownload = await getCachedDownload(videoId, format as 'audio' | 'video', quality || undefined);
+    
+    // Se o download estiver em cache e for bem-sucedido, retorna a URL
+    if (cachedDownload && cachedDownload.success && cachedDownload.url) {
+      return NextResponse.json({ url: cachedDownload.url });
     }
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
@@ -118,6 +127,14 @@ export async function GET(request: NextRequest) {
       try {
         const stream = await youtubeDl(url, options);
         
+        // Registra o download bem-sucedido
+        await recordDownloadAttempt(
+          videoId,
+          format as 'audio' | 'video',
+          quality || undefined,
+          true
+        );
+        
         // Configura headers da resposta
         const headers = new Headers();
         headers.set("Content-Type", format === "audio" ? "audio/mpeg" : "video/mp4");
@@ -133,6 +150,16 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         lastError = error;
         retries--;
+        
+        // Registra a tentativa falha
+        await recordDownloadAttempt(
+          videoId,
+          format as 'audio' | 'video',
+          quality || undefined,
+          false,
+          error instanceof Error ? error.message : String(error)
+        );
+        
         if (retries > 0) {
           // Aumenta o tempo de espera entre tentativas
           await new Promise(resolve => setTimeout(resolve, 5000 * (5 - retries)));
