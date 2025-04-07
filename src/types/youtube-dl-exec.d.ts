@@ -1,5 +1,5 @@
 declare module 'youtube-dl-exec' {
-  type OptionFormatSortPlus = 'res' | 'ext' | 'size' | 'br' | 'asr' | 'proto' | 'codec' | 'fps' | 'vcodec' | 'acodec' | 'filesize' | 'tbr' | 'vbr' | 'sbr' | 'height' | 'width' | 'format_id';
+  export type OptionFormatSortPlus = 'res' | 'ext' | 'size' | 'br' | 'asr' | 'proto' | 'codec' | 'fps' | 'vcodec' | 'acodec' | 'filesize' | 'tbr' | 'vbr' | 'sbr' | 'height' | 'width' | 'format_id';
 
   interface YoutubeDlOptions {
     format?: string;

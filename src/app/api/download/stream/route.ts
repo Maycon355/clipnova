@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import youtubeDl from "youtube-dl-exec";
+import type { OptionFormatSortPlus } from "youtube-dl-exec";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
       geoBypass: true,
       geoBypassCountry: "BR",
       extractorArgs: ["youtube:player_client=all"],
-      formatSort: ["res", "ext:mp4:m4a", "size", "br", "asr", "proto"],
+      formatSort: ["res", "ext", "size", "br", "asr", "proto"] as OptionFormatSortPlus[],
       mergeOutputFormat: "mp4",
       retries: 3,
       fragmentRetries: 3,
