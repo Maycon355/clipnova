@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import youtubeDl from "youtube-dl-exec";
 import type { OptionFormatSortPlus } from "youtube-dl-exec";
 import { getCachedDownload, recordDownloadAttempt } from "@/lib/cache";
+import { downloadQueue } from "@/lib/queue"; // Importar a fila
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,13 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Adiciona o job à fila para processamento assíncrono
+    await downloadQueue.add({
+      videoId,
+      format: format as 'audio' | 'video',
+      quality: quality || undefined
+    });
 
     // Verifica se o download está em cache
     const cachedDownload = await getCachedDownload(videoId, format as 'audio' | 'video', quality || undefined);

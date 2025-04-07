@@ -17,6 +17,8 @@
     "@vercel/kv": "^3.0.0",
     "autoprefixer": "^10.4.17",
     "axios": "^1.6.7",
+    "bull": "^4.16.5",
+    "ioredis": "^5.6.0",
     "next": "14.1.0",
     "postcss": "^8.4.35",
     "react": "^18",
