@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import ytdl from "@distube/ytdl-core";
+import ytdl from "ytdl-core";
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,8 +33,7 @@ export async function GET(request: NextRequest) {
           'Sec-Fetch-User': '?1',
           'Cache-Control': 'max-age=0'
         }
-      },
-      lang: 'pt-BR'
+      }
     };
 
     // Tentar obter informações do vídeo com retry

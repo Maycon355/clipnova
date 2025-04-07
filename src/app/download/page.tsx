@@ -67,23 +67,23 @@ export default function DownloadPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+    <div className="py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <div className="text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl mb-8">
             Baixe seus vídeos
           </h1>
-          <p className="mt-3 text-lg text-gray-500">
+          <p className="mt-6 text-lg text-white/80 mb-8">
             Cole a URL do YouTube e escolha as opções de download
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-12 space-y-8">
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <label htmlFor="url" className="block text-sm font-medium text-gray-700">
+          <div className="glass-effect rounded-xl shadow-lg p-6">
+            <label htmlFor="url" className="block text-sm font-medium text-gray-800">
               URL do YouTube
             </label>
-            <div className="mt-1">
+            <div className="mt-2">
               <input
                 type="text"
                 name="url"
@@ -97,25 +97,25 @@ export default function DownloadPage() {
           </div>
 
           {videoInfo && (
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-              <div className="flex items-center space-x-4">
+            <div className="glass-effect rounded-xl shadow-lg p-6">
+              <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
                 <img 
                   src={videoInfo.thumbnail} 
                   alt={videoInfo.title}
-                  className="w-32 h-20 object-cover rounded-lg"
+                  className="w-full sm:w-32 h-auto sm:h-20 object-cover rounded-lg"
                 />
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">{videoInfo.title}</h3>
-                  <p className="text-sm text-gray-500">{videoInfo.duration}</p>
+                <div className="text-center sm:text-left">
+                  <h3 className="text-lg font-medium text-gray-800">{videoInfo.title}</h3>
+                  <p className="text-sm text-gray-600">{videoInfo.duration}</p>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-              <label className="block text-sm font-medium text-gray-700 mb-4">Formato</label>
-              <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="glass-effect rounded-xl shadow-lg p-6">
+              <label className="block text-sm font-medium text-gray-800 mb-4">Formato</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <button
                   type="button"
                   onClick={() => setFormat("video")}
@@ -123,7 +123,7 @@ export default function DownloadPage() {
                     format === "video"
                       ? "border-indigo-600 bg-indigo-600 text-white"
                       : "border-gray-300 bg-white text-gray-700"
-                  } flex items-center justify-center rounded-lg border px-4 py-3 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200`}
+                  } flex items-center justify-center rounded-lg border px-6 py-4 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200 w-full`}
                 >
                   <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
                   Vídeo
@@ -135,7 +135,7 @@ export default function DownloadPage() {
                     format === "shorts"
                       ? "border-indigo-600 bg-indigo-600 text-white"
                       : "border-gray-300 bg-white text-gray-700"
-                  } flex items-center justify-center rounded-lg border px-4 py-3 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200`}
+                  } flex items-center justify-center rounded-lg border px-6 py-4 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200 w-full`}
                 >
                   <FilmIcon className="h-5 w-5 mr-2" />
                   Shorts
@@ -147,7 +147,7 @@ export default function DownloadPage() {
                     format === "audio"
                       ? "border-indigo-600 bg-indigo-600 text-white"
                       : "border-gray-300 bg-white text-gray-700"
-                  } flex items-center justify-center rounded-lg border px-4 py-3 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200`}
+                  } flex items-center justify-center rounded-lg border px-6 py-4 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200 w-full`}
                 >
                   <CloudArrowUpIcon className="h-5 w-5 mr-2" />
                   Áudio
@@ -155,9 +155,9 @@ export default function DownloadPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-              <label className="block text-sm font-medium text-gray-700 mb-4">Qualidade</label>
-              <div className="grid grid-cols-3 gap-3">
+            <div className="glass-effect rounded-xl shadow-lg p-6">
+              <label className="block text-sm font-medium text-gray-800 mb-4">Qualidade</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <button
                   type="button"
                   onClick={() => setQuality("low")}
@@ -165,7 +165,7 @@ export default function DownloadPage() {
                     quality === "low"
                       ? "border-indigo-600 bg-indigo-600 text-white"
                       : "border-gray-300 bg-white text-gray-700"
-                  } flex items-center justify-center rounded-lg border px-4 py-3 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200`}
+                  } flex items-center justify-center rounded-lg border px-6 py-4 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200 w-full`}
                 >
                   <SparklesIcon className="h-5 w-5 mr-2" />
                   Baixa
@@ -177,7 +177,7 @@ export default function DownloadPage() {
                     quality === "medium"
                       ? "border-indigo-600 bg-indigo-600 text-white"
                       : "border-gray-300 bg-white text-gray-700"
-                  } flex items-center justify-center rounded-lg border px-4 py-3 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200`}
+                  } flex items-center justify-center rounded-lg border px-6 py-4 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200 w-full`}
                 >
                   <SparklesIcon className="h-5 w-5 mr-2" />
                   Média
@@ -189,7 +189,7 @@ export default function DownloadPage() {
                     quality === "high"
                       ? "border-indigo-600 bg-indigo-600 text-white"
                       : "border-gray-300 bg-white text-gray-700"
-                  } flex items-center justify-center rounded-lg border px-4 py-3 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200`}
+                  } flex items-center justify-center rounded-lg border px-6 py-4 text-sm font-medium shadow-sm hover:bg-gray-50 transition-all duration-200 w-full`}
                 >
                   <SparklesIcon className="h-5 w-5 mr-2" />
                   Alta
@@ -198,23 +198,13 @@ export default function DownloadPage() {
             </div>
           </div>
 
-          <div>
+          <div className="mt-8 flex justify-center">
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-all duration-200"
+              className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-lg font-medium shadow-lg hover:bg-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processando...
-                </div>
-              ) : (
-                "Baixar"
-              )}
+              {loading ? "Processando..." : "Iniciar Download"}
             </button>
           </div>
         </form>

@@ -19,11 +19,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className}>
-        <div className="min-h-screen flex flex-col">
-          <Navbar />
-          <main className="flex-grow">{children}</main>
-          <Footer />
+      <body className={`${inter.className} animated-gradient`}>
+        <div className="min-h-screen flex flex-col relative">
+          <div className="absolute inset-0 bg-white/30 backdrop-blur-sm"></div>
+          <div className="relative z-10">
+            <Navbar />
+            <main className="flex-grow">{children}</main>
+            <Footer />
+          </div>
         </div>
         <Toaster position="top-right" />
       </body>
