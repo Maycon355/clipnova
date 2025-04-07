@@ -98,36 +98,23 @@ export async function GET(request: NextRequest) {
     while (retryCount < maxRetries) {
       try {
         const tempStream = ytdl.downloadFromInfo(info, {
-          ...requestOptions,
-          format: selectedFormat
+          format: selectedFormat,
+          ...requestOptions
         });
 
-        // Verificar se o stream é válido
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            tempStream?.destroy();
-            reject(new Error('Timeout ao iniciar stream'));
-          }, 5000);
-
-          tempStream.once('response', () => {
-            clearTimeout(timeout);
-            resolve(true);
-          });
-
-          tempStream.once('error', (error: Error) => {
-            clearTimeout(timeout);
-            reject(error);
-          });
-        });
+        // Validar se o stream foi criado corretamente
+        if (!tempStream) {
+          throw new Error("Stream não foi criado corretamente");
+        }
 
         stream = tempStream;
         break;
-      } catch (error) {
-        console.error(`Tentativa de stream ${retryCount + 1} falhou:`, error);
+      } catch (error: any) {
+        console.error(`Tentativa ${retryCount + 1} de criar stream falhou:`, error.message);
         retryCount++;
         
         if (retryCount === maxRetries) {
-          throw error;
+          throw new Error(`Falha ao criar stream após ${maxRetries} tentativas: ${error.message}`);
         }
         
         await new Promise(resolve => setTimeout(resolve, delays[retryCount - 1]));
@@ -138,34 +125,28 @@ export async function GET(request: NextRequest) {
       throw new Error("Não foi possível criar o stream de download");
     }
 
-    // Configurar headers para download
-    const title = info.videoDetails.title.replace(/[^\w\s]/gi, "");
-    const extension = format === "audio" ? "mp3" : "mp4";
-    const filename = `${title}.${extension}`;
+    // Configurar timeout para o stream
+    const streamTimeout = setTimeout(() => {
+      stream?.destroy();
+    }, 5000);
 
-    const headers = {
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "Content-Type": format === "audio" ? "audio/mpeg" : "video/mp4",
-    };
+    // Configurar headers da resposta
+    const headers = new Headers();
+    headers.set('Content-Type', format === 'audio' ? 'audio/mpeg' : 'video/mp4');
+    headers.set('Content-Disposition', `attachment; filename="${info.videoDetails.title}.${format === 'audio' ? 'mp3' : 'mp4'}"`);
+    headers.set('Content-Length', selectedFormat.contentLength || '0');
 
-    return new NextResponse(stream as any, { headers });
+    // Retornar o stream como resposta
+    return new NextResponse(stream as any, {
+      headers,
+      status: 200
+    });
+
   } catch (error: any) {
-    console.error("Erro ao processar stream:", error);
-    
-    let errorMessage = "Erro ao processar stream. Por favor, tente novamente.";
-    let statusCode = 500;
-
-    if (error.statusCode === 410) {
-      errorMessage = "O YouTube está temporariamente bloqueando downloads. Por favor, aguarde alguns minutos e tente novamente.";
-      statusCode = 410;
-    } else if (error.message.includes("Timeout")) {
-      errorMessage = "O download demorou muito para iniciar. Por favor, tente novamente.";
-      statusCode = 408;
-    }
-    
+    console.error('Erro no download:', error);
     return NextResponse.json(
-      { error: errorMessage },
-      { status: statusCode }
+      { error: error.message || "Erro ao processar o download" },
+      { status: 500 }
     );
   }
 } 
