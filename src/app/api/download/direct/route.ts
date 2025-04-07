@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
+// @ts-ignore - ytdl-core está instalado mas pode não ter tipos
+import ytdl from "ytdl-core";
+import { Readable } from "stream";
 
 export const dynamic = "force-dynamic";
 
@@ -54,196 +57,76 @@ export async function GET(request: NextRequest) {
 
     console.log(`[INFO] Iniciando download direto para o vídeo: ${videoId}`);
 
-    // Tenta cada API alternativa até encontrar uma que funcione
-    let lastError: Error | null = null;
-    
-    // Tenta a primeira API - Piped
     try {
-      const directUrl = `${API_ENDPOINTS[0]}/${videoId}`;
-      console.log(`[INFO] Tentando obter stream via ${directUrl}`);
-      
-      // Obter informações do stream
-      const streamInfo = await axios.get<StreamInfo>(directUrl, {
-        timeout: 8000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept': 'application/json'
-        }
-      });
-
-      // Obter a URL do stream de vídeo ou áudio com base no formato solicitado
-      let mediaUrl = '';
-      
-      if (format === 'audio') {
-        // Obter o stream de áudio de maior qualidade
-        const audioStreams = streamInfo.data.audioStreams || [];
-        if (audioStreams.length > 0) {
-          mediaUrl = audioStreams[0].url;
-        }
-      } else {
-        // Obter stream de vídeo com base na qualidade
-        const videoStreams = streamInfo.data.videoStreams || [];
-        let targetHeight = quality === 'high' ? 720 : quality === 'medium' ? 480 : 360;
-        
-        // Encontrar o stream mais próximo da qualidade desejada
-        let selectedStream = videoStreams.find((s: VideoStream) => s.height === targetHeight);
-        if (!selectedStream && videoStreams.length > 0) {
-          // Se não encontrar a qualidade exata, pegar a mais próxima
-          selectedStream = videoStreams[0];
-        }
-        
-        if (selectedStream) {
-          mediaUrl = selectedStream.url;
-        }
+      // Verificar se o vídeo existe
+      const videoExists = await ytdl.validateID(videoId);
+      if (!videoExists) {
+        throw new Error("ID de vídeo inválido");
       }
 
-      if (mediaUrl) {
-        return await streamMedia(mediaUrl, title, format);
-      }
-    } catch (error) {
-      console.error(`[ERRO] Falha ao obter stream via ${API_ENDPOINTS[0]}:`, error instanceof Error ? error.message : String(error));
-      lastError = error instanceof Error ? error : new Error(String(error));
-    }
-    
-    // Tenta a segunda API alternativa - Piped alternativo
-    try {
-      const directUrl = `${API_ENDPOINTS[1]}/${videoId}`;
-      console.log(`[INFO] Tentando obter stream via ${directUrl}`);
+      // Obter informações do vídeo
+      const videoInfo = await ytdl.getInfo(videoId);
       
-      const streamInfo = await axios.get<StreamInfo>(directUrl, {
-        timeout: 8000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept': 'application/json'
+      // Opções para o formato
+      const options: ytdl.downloadOptions = {
+        quality: format === 'audio' ? 'highestaudio' : 'highest',
+      };
+      
+      // Se for vídeo, definir qualidade específica
+      if (format === 'video') {
+        if (quality === 'high') {
+          options.quality = 'highest';
+        } else if (quality === 'medium') {
+          options.quality = '18'; // 360p
+        } else { // low
+          options.quality = '18'; // 360p
+        }
+      }
+      
+      // Obter o nome do arquivo limpo
+      const sanitizedTitle = title.replace(/[^\w\s.-]/g, '') || `video_${videoId}`;
+      const extension = format === 'audio' ? 'mp3' : 'mp4';
+      const fileName = `${sanitizedTitle}.${extension}`;
+      
+      // Criar um stream para o vídeo
+      const videoStream = ytdl(`https://www.youtube.com/watch?v=${videoId}`, options);
+      
+      // Configurar headers para download
+      const headers = new Headers();
+      headers.set('Content-Type', format === 'audio' ? 'audio/mp3' : 'video/mp4');
+      headers.set('Content-Disposition', `attachment; filename="${fileName}"`);
+      
+      // Criar um stream legível para o Next.js
+      const readable = new ReadableStream({
+        start(controller) {
+          videoStream.on('data', (chunk) => {
+            controller.enqueue(new Uint8Array(chunk));
+          });
+          
+          videoStream.on('end', () => {
+            controller.close();
+          });
+          
+          videoStream.on('error', (err) => {
+            console.error('[ERRO] Erro no stream:', err);
+            controller.error(err);
+          });
         }
       });
       
-      let mediaUrl = '';
-      
-      if (format === 'audio') {
-        const audioStreams = streamInfo.data.audioStreams || [];
-        if (audioStreams.length > 0) {
-          mediaUrl = audioStreams[0].url;
-        }
-      } else {
-        const videoStreams = streamInfo.data.videoStreams || [];
-        let targetHeight = quality === 'high' ? 720 : quality === 'medium' ? 480 : 360;
-        
-        let selectedStream = videoStreams.find((s: VideoStream) => s.height === targetHeight);
-        if (!selectedStream && videoStreams.length > 0) {
-          selectedStream = videoStreams[0];
-        }
-        
-        if (selectedStream) {
-          mediaUrl = selectedStream.url;
-        }
-      }
-      
-      if (mediaUrl) {
-        return await streamMedia(mediaUrl, title, format);
-      }
-    } catch (error) {
-      console.error(`[ERRO] Falha ao obter stream via ${API_ENDPOINTS[1]}:`, error instanceof Error ? error.message : String(error));
-      lastError = error instanceof Error ? error : new Error(String(error));
-    }
-    
-    // Tenta a terceira API - Youtube Multi Downloader
-    try {
-      const directUrl = `${API_ENDPOINTS[2]}?id=${videoId}`;
-      console.log(`[INFO] Tentando obter stream via ${directUrl}`);
-      
-      const streamInfo = await axios.get<StreamInfo>(directUrl, {
-        timeout: 8000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept': 'application/json'
-        }
+      return new NextResponse(readable, {
+        status: 200,
+        headers
       });
       
-      let mediaUrl = '';
-      
-      // Esta API retorna os dados de forma diferente
-      if (streamInfo.data.url) {
-        mediaUrl = streamInfo.data.url;
-      } else if (streamInfo.data.formats && streamInfo.data.formats.length > 0) {
-        const formats = streamInfo.data.formats;
-        
-        if (format === 'audio') {
-          // Filtrar formatos de áudio
-          const audioFormats = formats.filter((f: any) => f.mimeType?.includes('audio'));
-          if (audioFormats.length > 0) {
-            // Ordenar por bitrate (qualidade)
-            audioFormats.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0));
-            mediaUrl = audioFormats[0].url;
-          }
-        } else {
-          // Filtrar formatos de vídeo
-          const videoFormats = formats.filter((f: any) => f.mimeType?.includes('video'));
-          if (videoFormats.length > 0) {
-            let targetHeight = quality === 'high' ? 720 : quality === 'medium' ? 480 : 360;
-            
-            // Encontrar o formato com a altura mais próxima da desejada
-            let selectedFormat = videoFormats.find((f: any) => f.height === targetHeight);
-            if (!selectedFormat) {
-              // Ordenar por altura (qualidade)
-              videoFormats.sort((a: any, b: any) => (b.height || 0) - (a.height || 0));
-              selectedFormat = videoFormats[0];
-            }
-            
-            if (selectedFormat) {
-              mediaUrl = selectedFormat.url;
-            }
-          }
-        }
-      }
-      
-      if (mediaUrl) {
-        return await streamMedia(mediaUrl, title, format);
-      }
     } catch (error) {
-      console.error(`[ERRO] Falha ao obter stream via ${API_ENDPOINTS[2]}:`, error instanceof Error ? error.message : String(error));
-      lastError = error instanceof Error ? error : new Error(String(error));
-    }
-    
-    // Tenta a quarta API - Cobalt
-    try {
-      const directUrl = API_ENDPOINTS[3];
-      console.log(`[INFO] Tentando obter stream via ${directUrl}`);
+      console.error(`[ERRO] Falha ao obter stream direto:`, error instanceof Error ? error.message : String(error));
       
-      const response = await axios.post(directUrl, {
-        url: `https://youtube.com/watch?v=${videoId}`,
-        vCodec: "h264",
-        vQuality: quality === "high" ? "1080" : quality === "medium" ? "720" : "360",
-        aFormat: format === "audio" ? "mp3" : "best",
-        filenamePattern: "basic",
-        isAudioOnly: format === "audio",
-        isNoTTWatermark: true,
-        disableMetadata: true
-      }, {
-        timeout: 10000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (response.data && response.data.url) {
-        return await streamMedia(response.data.url, title, format);
-      }
-    } catch (error) {
-      console.error(`[ERRO] Falha ao obter stream via ${API_ENDPOINTS[3]}:`, error instanceof Error ? error.message : String(error));
-      lastError = error instanceof Error ? error : new Error(String(error));
+      // Como último recurso, redirecionar para o YouTube
+      const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
+      console.log(`[INFO] Redirecionando para embed do YouTube: ${embedUrl}`);
+      return NextResponse.redirect(embedUrl);
     }
-    
-    // Se chegou aqui, todas as APIs falharam
-    console.error(`[ERRO] Todas as APIs falharam. Último erro:`, lastError);
-    
-    // Redirecionar para YouTube como último recurso
-    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
-    console.log(`[INFO] Redirecionando para embed do YouTube: ${embedUrl}`);
-    return NextResponse.redirect(embedUrl);
-    
   } catch (error) {
     console.error(`[ERRO] Falha ao processar download direto:`, error instanceof Error ? error.message : String(error));
     return NextResponse.json({
