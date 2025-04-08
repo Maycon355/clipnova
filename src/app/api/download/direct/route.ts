@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 // @ts-ignore - ytdl-core está instalado mas pode não ter tipos
 import ytdl from "ytdl-core";
 
+// Desativa verificação de certificados SSL para solução de problemas com certificados
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+// Desativa verificações de atualização do ytdl-core
+process.env.YTDL_NO_UPDATE = 'true';
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 minutos para permitir downloads maiores
 
@@ -30,12 +35,16 @@ export async function GET(request: NextRequest) {
     try {
       // Configurar opções baseadas no formato e qualidade
       const options: ytdl.downloadOptions = {
-        filter: format === 'audio' ? 'audioonly' : 'audioandvideo',
+        filter: format === 'audio' ? 'audioonly' as ytdl.Filter : 'audioandvideo' as ytdl.Filter,
         quality: determineQuality(format, quality),
         requestOptions: {
+          // Desabilitar verificações de certificado e adicionar headers para evitar bloqueios
+          rejectUnauthorized: false,
           headers: {
-            // Simular acesso de um navegador para evitar bloqueios
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': '*/*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.youtube.com/'
           }
         }
       };
@@ -54,6 +63,20 @@ export async function GET(request: NextRequest) {
       const headers = new Headers();
       headers.set('Content-Disposition', `attachment; filename="${fileName}"`);
       headers.set('Content-Type', contentType);
+      
+      // Tratamento especial para erros no stream antes de enviar resposta
+      let hasError = false;
+      videoStream.on('error', (err) => {
+        console.error('[ERRO] Erro no stream:', err);
+        hasError = true;
+      });
+      
+      // Aguardar um momento para verificar se há erros imediatos
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (hasError) {
+        throw new Error("Erro ao iniciar streaming de vídeo");
+      }
       
       // Transformar o stream Node.js em ReadableStream para o navegador
       const readable = new ReadableStream({
@@ -85,10 +108,18 @@ export async function GET(request: NextRequest) {
     } catch (streamError) {
       console.error(`[ERRO] Falha ao criar stream:`, streamError instanceof Error ? streamError.message : String(streamError));
       
-      // Fallback para o player do YouTube quando tudo falhar
-      const embedUrl = `${YOUTUBE_EMBED_URL}${videoId}?autoplay=1&controls=1`;
-      console.log(`[INFO] Redirecionando para player do YouTube: ${embedUrl}`);
-      return NextResponse.redirect(embedUrl);
+      // Tentar abordagem alternativa antes de desistir completamente
+      try {
+        // Como alternativa, redirecionamos para um player do YouTube
+        const embedUrl = `${YOUTUBE_EMBED_URL}${videoId}?autoplay=1&controls=1`;
+        console.log(`[INFO] Redirecionando para player do YouTube: ${embedUrl}`);
+        return NextResponse.redirect(embedUrl);
+      } catch (fallbackError) {
+        console.error(`[ERRO] Falha até no fallback:`, fallbackError);
+        return NextResponse.json({
+          error: "Não foi possível processar o download. Tente novamente mais tarde."
+        }, { status: 500 });
+      }
     }
   } catch (error) {
     console.error(`[ERRO] Erro geral:`, error instanceof Error ? error.message : String(error));

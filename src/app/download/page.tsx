@@ -108,7 +108,28 @@ export default function DownloadPage() {
       // Construir a URL para o download direto com todos os parâmetros necessários
       const downloadUrl = `/api/download/direct?videoId=${videoId}&title=${encodeURIComponent(videoData.title || `video_${videoId}`)}&format=${format}&quality=${quality}`;
       
-      // Abrir o download em uma nova aba ou usar a aba atual
+      try {
+        // Verifica se a URL começa com http(s) - se for o caso, é redirecionamento para YouTube (fallback)
+        const response = await fetch(downloadUrl, { method: 'HEAD' });
+        
+        if (response.redirected && response.url.includes('youtube.com/embed')) {
+          // Se for redirecionamento para o YouTube, mostra mensagem e pergunta se quer continuar
+          toast.error("Não foi possível baixar o vídeo diretamente.");
+          
+          if (window.confirm("Download direto indisponível. Deseja assistir o vídeo no YouTube?")) {
+            window.open(response.url, '_blank');
+          } else {
+            toast.custom("Você pode tentar novamente mais tarde.");
+          }
+          setLoading(false);
+          return;
+        }
+      } catch (checkError) {
+        console.error("Erro ao verificar o tipo de resposta:", checkError);
+        // Se houver erro na verificação, continua com o método padrão
+      }
+      
+      // Se não for redirecionamento para YouTube ou a checagem falhar, tenta download direto
       window.location.href = downloadUrl;
       
     } catch (error) {
